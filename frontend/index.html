@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HELIOS PHM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f6f8fa;
+  --bg2:#eef1f5;
+  --bg3:#e4e8ee;
+  --panel:#ffffff;
+  --border:#d0d7de;
+  --border2:#b0bec5;
+  --accent:#0097a7;
+  --accent-light:rgba(0,151,167,.1);
+  --green:#00897b;
+  --green-light:rgba(0,137,123,.1);
+  --amber:#f57c00;
+  --amber-light:rgba(245,124,0,.1);
+  --red:#c62828;
+  --red-light:rgba(198,40,40,.1);
+  --violet:#6a1b9a;
+  --violet-light:rgba(106,27,154,.1);
+  --text:#0f1923;
+  --text2:#3d4f5c;
+  --text3:#7a909f;
+  --font:'Inter',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --radius:6px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;font-size:13px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+canvas{display:block}
+
+/* HEADER */
+.hdr{background:#fff;border-bottom:1px solid var(--border);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 0 var(--border)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#0097a7,#00bcd4);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.logo-tx{font-size:14px;font-weight:700;letter-spacing:.5px;color:var(--text)}
+.logo-sx{font-size:10px;color:var(--text3);font-weight:400}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.pill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px}
+.pill-ok{background:var(--green-light);color:var(--green)}
+.pill-warn{background:var(--amber-light);color:var(--amber)}
+.pill-err{background:var(--red-light);color:var(--red)}
+.clock{font-family:var(--mono);font-size:11px;color:var(--text3);font-weight:500;background:var(--bg2);padding:3px 8px;border-radius:4px;border:1px solid var(--border)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 2s infinite}
+
+/* LAYOUT */
+.main{display:grid;grid-template-columns:220px 1fr 256px;height:calc(100vh - 48px)}
+.sb{border-right:1px solid var(--border);overflow-y:auto;background:#fff}
+.sb-r{border-left:1px solid var(--border);background:#fff}
+.sec{padding:12px 14px;border-bottom:1px solid var(--border)}
+.sec-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:8px}
+
+/* ENGINE */
+.eng-wrap{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg)}
+#engineCanvas{width:100%;height:130px;border-radius:var(--radius);border:1px solid var(--border)}
+.eng-lbl{font-size:10px;color:var(--text3);margin-top:6px;font-family:var(--mono);text-align:center}
+
+/* UNIT LIST */
+.ui{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;transition:background .12s;margin-bottom:1px}
+.ui:hover{background:var(--bg)}
+.ui.sel{background:var(--accent-light)}
+.udot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.udot.h{background:var(--red)}
+.udot.m{background:var(--amber)}
+.udot.l{background:var(--green)}
+.un{font-size:12px;font-weight:600;color:var(--text);flex:1}
+.um{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.aru{font-family:var(--mono);font-size:11px;font-weight:700}
+.aru.d{color:var(--red)}.aru.w{color:var(--amber)}.aru.g{color:var(--green)}
+
+/* STAT GRID */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 14px}
+.st{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;text-align:center}
+.sv{font-size:20px;font-weight:700;font-family:var(--mono);line-height:1.1}
+.sv.d{color:var(--red)}.sv.w{color:var(--amber)}.sv.g{color:var(--green)}.sv.i{color:var(--accent)}
+.sl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-top:2px}
+
+/* BUTTONS */
+.btn-p{width:100%;padding:7px 12px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;text-align:left;margin-bottom:4px;transition:background .15s;display:flex;align-items:center;gap:6px}
+.btn-p:hover{background:#00838f}
+.btn-s{width:100%;padding:6px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-family:var(--font);font-size:11px;cursor:pointer;text-align:left;margin-bottom:4px;transition:all .15s;display:flex;align-items:center;gap:6px}
+.btn-s:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+
+/* CENTER */
+.ctr{overflow-y:auto;background:var(--bg)}
+.tab-bar{display:flex;gap:0;padding:0 16px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:10}
+.tb{font-size:12px;font-weight:500;padding:10px 14px;border:none;background:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font);transition:all .15s}
+.tb.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tb:hover:not(.on){color:var(--text2)}
+.pg{display:none;padding:16px}.pg.on{display:block}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.kpi-l{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.kpi-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px}
+.kpi-v{font-size:26px;font-weight:700;font-family:var(--mono);line-height:1}
+.kpi-v.d{color:var(--red)}.kpi-v.w{color:var(--amber)}.kpi-v.g{color:var(--green)}.kpi-v.i{color:var(--accent)}.kpi-v.v{color:var(--violet)}
+.kpi-s{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* PANELS */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pt{font-size:12px;font-weight:600;color:var(--text)}
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.bd{background:var(--red-light);color:var(--red)}
+.bw{background:var(--amber-light);color:var(--amber)}
+.bg{background:var(--green-light);color:var(--green)}
+.bi{background:var(--accent-light);color:var(--accent)}
+.bv{background:var(--violet-light);color:var(--violet)}
+.cw{position:relative;width:100%}
+
+/* MODEL CARDS */
+.mc{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;transition:all .15s;cursor:default}
+.mc:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.mc.rul-card{border-left:3px solid var(--accent)}
+.mc.fault-card{border-left:3px solid var(--violet)}
+.mc.best{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+.mc.untrained{opacity:.5}
+.mc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.mc-name{font-size:12px;font-weight:700;color:var(--text)}
+.mc-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px}
+.mc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.mcm{text-align:center;background:#fff;border-radius:4px;padding:5px 3px;border:1px solid var(--border)}
+.mcm-v{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.mcm-l{font-size:9px;color:var(--text3);margin-top:1px;font-weight:500}
+.mc-bar{height:3px;border-radius:2px;margin-top:8px;background:var(--border);overflow:hidden}
+.mc-bar-f{height:100%;border-radius:2px;transition:width .9s ease}
+.mc-desc{font-size:10px;color:var(--text3);margin-bottom:6px;line-height:1.5}
+
+/* DIVIDERS */
+.sec-div{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.sec-div-line{flex:1;height:1px;background:var(--border)}
+.sec-div-tx{font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+
+/* PROGRESS BARS */
+.pr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pl{font-size:11px;font-weight:500;color:var(--text2);width:72px;flex-shrink:0}
+.pb{flex:1;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;transition:width .9s ease}
+.pv{font-family:var(--mono);font-size:11px;color:var(--text2);width:38px;text-align:right;flex-shrink:0;font-weight:600}
+
+/* ALERT */
+.al-item{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start}
+.al-ic{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;font-weight:700}
+.al-d{background:var(--red-light);color:var(--red)}
+.al-w{background:var(--amber-light);color:var(--amber)}
+.al-title{font-size:11px;font-weight:600;margin-bottom:1px}
+.al-meta{font-size:10px;color:var(--text3);font-family:var(--mono)}
+
+/* UNIT DETAIL */
+.rul-big{font-size:40px;font-weight:700;font-family:var(--mono);line-height:1}
+.rul-big.d{color:var(--red)}.rul-big.w{color:var(--amber)}.rul-big.g{color:var(--green)}
+.rb{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+.rb-h{background:var(--red-light);color:var(--red)}
+.rb-m{background:var(--amber-light);color:var(--amber)}
+.rb-l{background:var(--green-light);color:var(--green)}
+
+/* SENSOR TABLE */
+.stbl{width:100%;font-size:11px;border-collapse:collapse}
+.stbl th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:5px 6px;border-bottom:1px solid var(--border);text-align:left}
+.stbl td{padding:4px 6px;border-bottom:1px solid var(--bg2);font-family:var(--mono);color:var(--text)}
+.stbl tr:hover td{background:var(--bg)}
+.sbar{background:var(--bg2);border-radius:2px;height:3px;overflow:hidden;width:48px}
+.sbar-f{height:3px;border-radius:2px}
+
+/* CM */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;font-family:var(--mono);font-size:12px;font-weight:700}
+.cm-c{padding:8px;border-radius:var(--radius);text-align:center;border:1px solid var(--border)}
+.cm-tn{background:var(--green-light);color:var(--green)}
+.cm-fp{background:var(--red-light);color:var(--red)}
+.cm-fn{background:var(--amber-light);color:var(--amber)}
+.cm-tp{background:var(--green-light);color:var(--green)}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:6px}
+.toast{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;font-weight:500;animation:fadeIn .25s ease;max-width:280px;box-shadow:var(--shadow-md)}
+.toast.ok{border-left:3px solid var(--green);color:var(--green)}
+.toast.err{border-left:3px solid var(--red);color:var(--red)}
+.toast.info{border-left:3px solid var(--accent);color:var(--accent)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── FAILURE REASON PANEL ─────────────────────────────── */
+.fr-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-top:8px}
+.fr-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px}
+.anomaly-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;margin:2px;border:1px solid}
+.chip-thermal{background:rgba(198,40,40,.08);border-color:rgba(198,40,40,.3);color:#c62828}
+.chip-pressure{background:rgba(245,124,0,.08);border-color:rgba(245,124,0,.3);color:#e65100}
+.chip-vibration{background:rgba(106,27,154,.08);border-color:rgba(106,27,154,.3);color:#6a1b9a}
+.chip-fuel{background:rgba(0,137,123,.08);border-color:rgba(0,137,123,.3);color:#00695c}
+.chip-default{background:var(--bg2);border-color:var(--border);color:var(--text3)}
+.sensor-alert{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;margin-bottom:2px;font-size:10px}
+.sa-critical{background:rgba(198,40,40,.06)}
+.sa-warning{background:rgba(245,124,0,.06)}
+.deg-badge{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.deg-stable{background:rgba(0,137,123,.1);color:#00695c}
+.deg-moderate{background:rgba(245,124,0,.1);color:#e65100}
+.deg-rapid{background:rgba(198,40,40,.1);color:#c62828}
+/* ── PRIORITY SCORE ───────────────────────────────────── */
+.ps-bar-wrap{display:flex;align-items:center;gap:6px;margin:6px 0}
+.ps-bar-bg{flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.ps-bar-fill{height:100%;border-radius:4px;transition:width .8s ease;background:linear-gradient(90deg,#0097a7,#c62828)}
+.ps-val{font-family:var(--mono);font-size:13px;font-weight:700;width:38px;text-align:right}
+/* ── MAINTENANCE WINDOW ───────────────────────────────── */
+.mw-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-top:6px}
+.mw-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;border-bottom:1px solid var(--border)}
+.mw-row:last-child{border-bottom:none}
+.mw-label{color:var(--text3);font-weight:500}
+.mw-value{font-family:var(--mono);font-weight:700;color:var(--text)}
+/* ── ACTION LIST ─────────────────────────────────────── */
+.action-item{display:flex;align-items:flex-start;gap:6px;padding:3px 0;font-size:11px}
+.action-check{color:var(--green);font-weight:700;flex-shrink:0}
+/* ── PRODUCTION IMPACT ───────────────────────────────── */
+.pi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.pi-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px;text-align:center}
+.pi-val{font-family:var(--mono);font-size:14px;font-weight:700}
+.pi-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+/* ── GANTT TEAM ─────────────────────────────────────── */
+.team-badge{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.team-a{background:rgba(0,151,167,.1);color:#0097a7}
+.team-b{background:rgba(106,27,154,.1);color:#6a1b9a}
+.fleet-summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.fs-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center;box-shadow:var(--shadow)}
+.fs-val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent)}
+.fs-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+.dz-active{border-color:var(--accent)!important;background:var(--accent-light)!important}
+.file-chip{display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;margin-bottom:3px;font-size:10px;color:var(--text2)}
+.file-chip span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.file-chip .fc-rm{border:none;background:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;line-height:1}
+.file-chip .fc-rm:hover{color:var(--red)}
+.fc-type{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--accent-light);color:var(--accent);text-transform:uppercase;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+        <polygon points="10,2 18,16 2,16" stroke="white" stroke-width="1.5" fill="none"/>
+        <circle cx="10" cy="10" r="2.5" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-tx">HELIOS PHM</div>
+      <div class="logo-sx">Predictive Health Monitoring</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <span class="pill pill-warn pulse" id="apiStatus">● Connecting</span>
+    <span class="clock" id="clockEl">00:00:00</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- LEFT -->
+  <div class="sb">
+    <div class="eng-wrap">
+      <canvas id="engineCanvas" width="192" height="130"></canvas>
+      <div class="eng-lbl" id="engLbl">awaiting model results</div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Fleet — Risk</div>
+      <div id="unitList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:16px">Modelleri eğitin</div></div>
+    </div>
+    <div class="sg">
+      <div class="st"><div class="sv d" id="sHigh">—</div><div class="sl">Critical</div></div>
+      <div class="st"><div class="sv w" id="sMed">—</div><div class="sl">Warning</div></div>
+      <div class="st"><div class="sv g" id="sLow">—</div><div class="sl">Healthy</div></div>
+      <div class="st"><div class="sv i" id="sTotal">—</div><div class="sl">Total</div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Model Eğitimi</div>
+      <button class="btn-p" id="trainBtn" onclick="trainAll()"><span>▶</span> Tüm Modelleri Eğit</button>
+      <button class="btn-s" onclick="trainGroup('rul')"><span>▶</span> RUL Modelleri</button>
+      <button class="btn-s" onclick="trainGroup('fault')"><span>▶</span> Arıza Modelleri</button>
+    </div>
+
+    <!-- DATA IMPORT -->
+    <div class="sec">
+      <div class="sec-t">Veri İçe Aktar</div>
+      <div id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('dz-active')" ondragleave="this.classList.remove('dz-active')" ondrop="handleDrop(event)" style="border:2px dashed var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:8px;background:var(--bg)">
+        <div style="font-size:18px;color:var(--border2);margin-bottom:4px">↑</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text2)">Dosya sürükle veya tıkla</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">.txt · .csv · .xlsx · .json</div>
+      </div>
+      <input type="file" id="fileInput" accept=".txt,.csv,.xlsx,.xls,.json" multiple style="display:none" onchange="handleFileSelect(this.files)">
+      <div id="importedFiles" style="margin-bottom:6px"></div>
+      <button class="btn-p" onclick="importData()" id="importBtn" style="display:none"><span>↑</span> Veriyi Yükle</button>
+      <div id="importStatus" style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px"></div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="sec">
+      <div class="sec-t">Rapor Dışa Aktar</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Model sonuçları ve analiz raporu</div>
+      <button class="btn-p" onclick="exportPDF()"><span>↓</span> PDF Rapor İndir</button>
+      <button class="btn-s" onclick="exportExcel()"><span>↓</span> Excel Rapor İndir</button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t"></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="ctr">
+    <div class="tab-bar">
+      <button class="tb on" onclick="switchTab('t-ov',this)">Overview</button>
+      <button class="tb" onclick="switchTab('t-rul',this)">RUL</button>
+      <button class="tb" onclick="switchTab('t-fault',this)">Arıza Tespiti</button>
+      <button class="tb" onclick="switchTab('t-maint',this)">Bakım Planı</button>
+      <button class="tb" onclick="switchTab('t-detail',this)" id="tab-detail">Motor Detay</button>
+    </div>
+
+    <div id="t-ov" class="pg on">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-l">Kritik Motor</div></div>
+          <div class="kpi-v d" id="kHigh">—</div><div class="kpi-s">acil müdahale</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-l">Ort. RUL</div></div>
+          <div class="kpi-v w" id="kRul">—</div><div class="kpi-s">cycle kalan</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-l">En İyi R²</div></div>
+          <div class="kpi-v g" id="kBestR2">—</div><div class="kpi-s" id="kBestM">eğitim bekleniyor</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-l">Model</div></div>
+          <div class="kpi-v i" id="kModels">0</div><div class="kpi-s">/ 6 toplam</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <div class="pt">Model Durumu</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <span style="font-size:10px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:4px"><span style="width:8px;height:3px;background:var(--accent);display:inline-block;border-radius:2px"></span>RUL</span>
+            <span style="font-size:10px;font-weight:600;color:var(--violet);display:flex;align-items:center;gap:4px"><span style="width:8px;height:3px;background:var(--violet);display:inline-block;border-radius:2px"></span>Arıza</span>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-tx">RUL Modelleri</div><div class="sec-div-line"></div></div>
+          <div class="row3" style="margin-bottom:0">
+            <div class="mc rul-card" id="mc-lstm">
+              <div class="mc-top"><span class="mc-name">LSTM</span><span class="mc-tag bi">RUL</span></div>
+              
+              <div class="mc-metrics" id="mm-lstm">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">RMSE</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">MAE</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-lstm" style="width:0%;background:var(--accent)"></div></div>
+            </div>
+            <div class="mc rul-card" id="mc-gru">
+              <div class="mc-top"><span class="mc-name">GRU</span><span class="mc-tag bi">RUL</span></div>
+              
+              <div class="mc-metrics" id="mm-gru">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">RMSE</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">MAE</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-gru" style="width:0%;background:var(--accent)"></div></div>
+            </div>
+            <div class="mc rul-card" id="mc-transformer">
+              <div class="mc-top"><span class="mc-name">TST</span><span class="mc-tag bi">RUL</span></div>
+              
+              <div class="mc-metrics" id="mm-transformer">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">RMSE</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">MAE</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-transformer" style="width:0%;background:var(--accent)"></div></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-tx">Arıza Tespiti</div><div class="sec-div-line"></div></div>
+          <div class="row3" style="margin-bottom:0">
+            <div class="mc fault-card" id="mc-rf">
+              <div class="mc-top"><span class="mc-name">Random Forest</span><span class="mc-tag bv">Arıza</span></div>
+              
+              <div class="mc-metrics" id="mm-rf">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">F1</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">AUC</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">Prec</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-rf" style="width:0%;background:var(--violet)"></div></div>
+            </div>
+            <div class="mc fault-card" id="mc-xgb">
+              <div class="mc-top"><span class="mc-name">XGBoost</span><span class="mc-tag bv">Arıza</span></div>
+              
+              <div class="mc-metrics" id="mm-xgb">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">F1</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">AUC</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-xgb" style="width:0%;background:var(--violet)"></div></div>
+            </div>
+            <div class="mc fault-card" id="mc-svm">
+              <div class="mc-top"><span class="mc-name">SVM</span><span class="mc-tag bv">Arıza</span></div>
+              
+              <div class="mc-metrics" id="mm-svm">
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">RMSE</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">MAE</div></div>
+              </div>
+              <div class="mc-bar"><div class="mc-bar-f" id="mb-svm" style="width:0%;background:var(--violet)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="panel"><div class="ph"><div class="pt">RUL Dağılımı</div><span class="badge bi" id="bUnits">— motor</span></div><div class="cw" style="height:180px"><canvas id="cRulDist"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="pt">Risk Dağılımı</div><span class="badge bd" id="bHigh">— kritik</span></div><div class="cw" style="height:180px"><canvas id="cRiskPie"></canvas></div></div>
+      </div>
+    </div>
+
+    <div id="t-rul" class="pg">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">LSTM R²</div></div><div class="kpi-v g" id="kLstmR2">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">GRU R²</div></div><div class="kpi-v i" id="kGruR2">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">TST R²</div></div><div class="kpi-v v" id="kTstR2">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">En İyi RMSE</div></div><div class="kpi-v w" id="kBestRmse">—</div><div class="kpi-s" id="kBestRmseM"></div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">Gerçek vs Tahmin RUL</div><span class="badge bg" id="bBestRulM">model seç</span></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px" id="rulModelSel">
+          <button onclick="selectRulChart('lstm',this)" style="font-size:11px;padding:4px 12px;background:var(--accent);border:1px solid var(--accent);border-radius:20px;color:#fff;cursor:pointer;font-family:var(--font);font-weight:600">LSTM</button>
+          <button onclick="selectRulChart('gru',this)" style="font-size:11px;padding:4px 12px;background:transparent;border:1px solid var(--border);border-radius:20px;color:var(--text3);cursor:pointer;font-family:var(--font)">GRU</button>
+          <button onclick="selectRulChart('transformer',this)" style="font-size:11px;padding:4px 12px;background:transparent;border:1px solid var(--border);border-radius:20px;color:var(--text3);cursor:pointer;font-family:var(--font)">TST</button>
+        </div>
+        <div class="cw" style="height:210px"><canvas id="cActVsPred"></canvas></div>
+      </div>
+      <div class="row2">
+        <div class="panel"><div class="ph"><div class="pt">Hata Dağılımı</div><span class="badge bw">histogram</span></div><div class="cw" style="height:180px"><canvas id="cErrHist"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="pt">Scatter</div><span class="badge bi">regresyon</span></div><div class="cw" style="height:180px"><canvas id="cScatter"></canvas></div></div>
+      </div>
+      <div class="panel"><div class="ph"><div class="pt">Model Karşılaştırması</div><span class="badge bi">LSTM · GRU · TST</span></div><div class="cw" style="height:210px"><canvas id="cRulCmp"></canvas></div></div>
+    </div>
+
+    <div id="t-fault" class="pg">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">RF F1</div></div><div class="kpi-v v" id="kRfF1">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">RF AUC</div></div><div class="kpi-v v" id="kRfAuc">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">XGBoost F1</div></div><div class="kpi-v i" id="kXgbF1">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">SVM R²</div></div><div class="kpi-v w" id="kSvmR2">—</div><div class="kpi-s"></div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">Random Forest</div><span class="badge bv"></span></div>
+        <div class="row2" style="margin-bottom:0">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Metrikler</div>
+            <div class="pr"><span class="pl">F1 Score</span><div class="pb"><div class="pf" id="pf-rf-f1" style="width:0%;background:var(--violet)"></div></div><span class="pv" id="pv-rf-f1">—</span></div>
+            <div class="pr"><span class="pl">Precision</span><div class="pb"><div class="pf" id="pf-rf-prec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-rf-prec">—</span></div>
+            <div class="pr"><span class="pl">Recall</span><div class="pb"><div class="pf" id="pf-rf-rec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-rf-rec">—</span></div>
+            <div class="pr"><span class="pl">AUC-ROC</span><div class="pb"><div class="pf" id="pf-rf-auc" style="width:0%;background:var(--green)"></div></div><span class="pv" id="pv-rf-auc">—</span></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Confusion Matrix</div>
+            <div class="cm-grid" id="cm-rf">
+              <div class="cm-c cm-tn">TN: —<br><span style="font-size:9px;font-weight:400">True Neg</span></div>
+              <div class="cm-c cm-fp">FP: —<br><span style="font-size:9px;font-weight:400">False Pos</span></div>
+              <div class="cm-c cm-fn">FN: —<br><span style="font-size:9px;font-weight:400">False Neg</span></div>
+              <div class="cm-c cm-tp">TP: —<br><span style="font-size:9px;font-weight:400">True Pos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">XGBoost</div><span class="badge bi"></span></div>
+        <div class="row2" style="margin-bottom:0">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Arıza Sınıflandırma</div>
+            <div class="pr"><span class="pl">F1 Score</span><div class="pb"><div class="pf" id="pf-xgb-f1" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-xgb-f1">—</span></div>
+            <div class="pr"><span class="pl">Precision</span><div class="pb"><div class="pf" id="pf-xgb-prec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-xgb-prec">—</span></div>
+            <div class="pr"><span class="pl">Recall</span><div class="pb"><div class="pf" id="pf-xgb-rec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-xgb-rec">—</span></div>
+            <div class="pr"><span class="pl">AUC-ROC</span><div class="pb"><div class="pf" id="pf-xgb-auc" style="width:0%;background:var(--green)"></div></div><span class="pv" id="pv-xgb-auc">—</span></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Confusion Matrix</div>
+            <div class="pr"><span class="pl">R²</span><div class="pb"><div class="pf" id="pf-xgb-r2" style="width:0%;background:var(--green)"></div></div><span class="pv" id="pv-xgb-r2">—</span></div>
+            <div class="pr"><span class="pl">RMSE</span><div class="pb"><div class="pf" id="pf-xgb-rmse" style="width:0%;background:var(--red)"></div></div><span class="pv" id="pv-xgb-rmse">—</span></div>
+            <div class="pr"><span class="pl">MAE</span><div class="pb"><div class="pf" id="pf-xgb-mae" style="width:0%;background:var(--amber)"></div></div><span class="pv" id="pv-xgb-mae">—</span></div>
+            <div class="cm-grid" id="cm-xgb" style="margin-top:8px">
+              <div class="cm-c cm-tn">TN: —<br><span style="font-size:9px;font-weight:400">True Neg</span></div>
+              <div class="cm-c cm-fp">FP: —<br><span style="font-size:9px;font-weight:400">False Pos</span></div>
+              <div class="cm-c cm-fn">FN: —<br><span style="font-size:9px;font-weight:400">False Neg</span></div>
+              <div class="cm-c cm-tp">TP: —<br><span style="font-size:9px;font-weight:400">True Pos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">SVM</div><span class="badge bw"></span></div>
+        <div class="row2" style="margin-bottom:0">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Metrikler</div>
+              <div class="pr"><span class="pl">F1 Score</span><div class="pb"><div class="pf" id="pf-svm-f1" style="width:0%;background:var(--violet)"></div></div><span class="pv" id="pv-svm-f1">—</span></div>
+              <div class="pr"><span class="pl">Precision</span><div class="pb"><div class="pf" id="pf-svm-prec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-svm-prec">—</span></div>
+              <div class="pr"><span class="pl">Recall</span><div class="pb"><div class="pf" id="pf-svm-rec" style="width:0%;background:var(--accent)"></div></div><span class="pv" id="pv-svm-rec">—</span></div>
+              <div class="pr"><span class="pl">AUC-ROC</span><div class="pb"><div class="pf" id="pf-svm-auc" style="width:0%;background:var(--green)"></div></div><span class="pv" id="pv-svm-auc">—</span></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Confusion Matrix</div>
+            <div class="cm-grid" id="cm-svm">
+              <div class="cm-c cm-tn">TN: —<br><span style="font-size:9px;font-weight:400">True Neg</span></div>
+              <div class="cm-c cm-fp">FP: —<br><span style="font-size:9px;font-weight:400">False Pos</span></div>
+              <div class="cm-c cm-fn">FN: —<br><span style="font-size:9px;font-weight:400">False Neg</span></div>
+              <div class="cm-c cm-tp">TP: —<br><span style="font-size:9px;font-weight:400">True Pos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel"><div class="ph"><div class="pt">Arıza Olasılığı — Tüm Motorlar</div><span class="badge bv">probability</span></div><div class="cw" style="height:195px"><canvas id="cFailProb"></canvas></div></div>
+    </div>
+
+    <div id="t-maint" class="pg">
+      <!-- KPI -->
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">Acil Bakım</div></div><div class="kpi-v d" id="kMaintH">—</div><div class="kpi-s">RUL ≤ 30</div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">İzleme</div></div><div class="kpi-v w" id="kMaintM">—</div><div class="kpi-s">RUL 31–60</div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">Normal</div></div><div class="kpi-v g" id="kMaintL">—</div><div class="kpi-s">RUL > 60</div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">Toplam</div></div><div class="kpi-v i" id="kMaintTot">—</div><div class="kpi-s"></div></div>
+      </div>
+
+      <!-- GANTT -->
+      <div class="panel">
+        <div class="ph">
+          <div class="pt">Bakım Gantt Planı</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="display:flex;gap:4px;background:var(--bg2);padding:3px;border-radius:var(--radius);border:1px solid var(--border)">
+              <button onclick="setGanttView('week',this)" id="gv-week" style="font-size:11px;font-weight:600;padding:3px 10px;border:none;border-radius:4px;cursor:pointer;background:var(--accent);color:#fff;font-family:var(--font)">0–30 cycle</button>
+              <button onclick="setGanttView('month',this)" id="gv-month" style="font-size:11px;font-weight:600;padding:3px 10px;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text3);font-family:var(--font)">0–125 cycle</button>
+            </div>
+            <span class="badge bd" id="bMaintCrit">— kritik</span>
+          </div>
+        </div>
+        <div id="ganttWrap" style="overflow-x:auto">
+          <div id="ganttChart" style="min-width:600px"><div style="font-size:12px;color:var(--text3);text-align:center;padding:32px">Model eğitiminden sonra oluşturulur</div></div>
+        </div>
+      </div>
+
+      <!-- FLEET SUMMARY + EKIP PLANI yan yana -->
+      <div class="row2">
+        <!-- Fleet Summary -->
+        <div class="panel">
+          <div class="ph"><div class="pt">Fleet Özeti</div><span class="badge bi" id="fleetBadge" style="display:none">Canlı</span></div>
+          <div id="fleetSummaryContent">
+            <div style="font-size:12px;color:var(--text3);text-align:center;padding:16px">Model eğitiminden sonra oluşturulur</div>
+          </div>
+        </div>
+        <!-- Ekip Atama -->
+        <div class="panel">
+          <div class="ph"><div class="pt">Ekip Atama Planı</div><div style="display:flex;gap:6px"><span style="font-size:10px;font-weight:600;color:var(--accent)">■ Team A</span><span style="font-size:10px;font-weight:600;color:var(--violet)">■ Team B</span></div></div>
+          <div id="resourceTable">
+            <div style="font-size:12px;color:var(--text3);text-align:center;padding:16px">Model eğitiminden sonra oluşturulur</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÖNCELIK + MAINTENANCE WINDOW + ACTIONS listesi -->
+      <div class="panel">
+        <div class="ph">
+          <div class="pt">Öncelik & Bakım Planı</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Priority = 0.5×Risk + 0.3×Crit + 0.2×Prod</div>
+        </div>
+        <div id="maintList"><div style="font-size:12px;color:var(--text3);text-align:center;padding:24px">Model eğitiminden sonra oluşturulur</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ MOTOR DETAY ═══ -->
+    <div id="t-detail" class="pg">
+      <!-- Üst satır: Motor özeti -->
+      <div id="detailEmpty" style="text-align:center;padding:48px;color:var(--text3)">
+        <div style="font-size:32px;margin-bottom:12px">⚙</div>
+        <div style="font-size:14px;font-weight:600">Soldaki listeden bir motor seçin</div>
+        <div style="font-size:12px;margin-top:4px">Sensör durumu ve anomali analizi burada görünecek</div>
+      </div>
+
+      <div id="detailContent" style="display:none">
+        <!-- Motor başlık kartı -->
+        <div class="panel" style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:20px">
+            <div style="text-align:center;min-width:80px">
+              <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px" id="dtUnitName">—</div>
+              <div style="font-size:40px;font-weight:700;font-family:var(--mono);line-height:1.1" id="dtRul">—</div>
+              <div style="font-size:10px;color:var(--text3)">cycles remaining</div>
+            </div>
+            <div style="width:1px;height:60px;background:var(--border)"></div>
+            <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+              <div style="text-align:center">
+                <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Risk</div>
+                <span class="rb rb-l" id="dtRisk">—</span>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Arıza Olasılığı</div>
+                <div style="font-size:18px;font-weight:700;font-family:var(--mono)" id="dtProb">—</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Degradation</div>
+                <span id="dtDegRate" style="display:inline-flex;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--bg2);color:var(--text3)">—</span>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bakım Penceresi</div>
+                <div style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--accent)" id="dtMaintDate">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row2">
+          <!-- Sol: Sensör durumu -->
+          <div class="panel">
+            <div class="ph"><div class="pt">Sensör Okumaları</div><span class="badge bi" id="dtSensorCount">—</span></div>
+            <table class="stbl" style="font-size:11px">
+              <thead>
+                <tr>
+                  <th style="width:100px">Sensör</th>
+                  <th>Açıklama</th>
+                  <th style="width:70px">Değer</th>
+                  <th style="width:80px">Durum</th>
+                </tr>
+              </thead>
+              <tbody id="dtSensorBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Sağ: Anomali analizi -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- Primary anomalies -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="ph" style="margin-bottom:8px"><div class="pt">Anomali Tespiti</div></div>
+              <div id="dtAnomalies">
+                <div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">Analiz bekleniyor</div>
+              </div>
+            </div>
+
+            <!-- Kritik sensörler -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="ph" style="margin-bottom:8px"><div class="pt">Kritik Sensör Alarmları</div></div>
+              <div id="dtSensorAlerts">
+                <div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">Alarm yok</div>
+              </div>
+            </div>
+
+            <!-- Bakım önerileri -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="ph" style="margin-bottom:8px"><div class="pt">Önerilen İşlemler</div></div>
+              <div id="dtActions">
+                <div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="sb sb-r">
+    <div class="sec">
+      <div class="sec-t">Uyarılar</div>
+      <div id="alertList"><div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">Model eğitimi bekleniyor</div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Seçili Motor</div>
+      <div id="unitDetail">
+        <div style="text-align:center;padding:14px 10px">
+          <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase" id="dUnitName">UNIT —</div>
+          <div class="rul-big g" id="dRul">—</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;font-weight:500">cycles remaining</div>
+          <div style="font-size:12px;font-family:var(--mono);margin-top:7px;font-weight:600" id="dProb">—</div>
+          <div style="margin-top:8px"><span class="rb rb-l" id="dRisk">—</span></div>
+        </div>
+        <div style="padding:0 10px" id="dHealthBars"></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Sensörler</div>
+      <table class="stbl">
+        <thead><tr><th>Sensör</th><th>Değer</th><th>Sağlık</th></tr></thead>
+        <tbody id="sensorBody"></tbody>
+      </table>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Log</div>
+      <div id="trainLog" style="font-family:var(--mono);font-size:10px;color:var(--text3);max-height:130px;overflow-y:auto;line-height:1.8"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:5050/api';
+Chart.defaults.color='#3d4f5c';
+Chart.defaults.borderColor='rgba(208,215,222,0.8)';
+Chart.defaults.font.family='Inter,sans-serif';
+let charts={},RESULTS_CACHE={},UNITS_CACHE=[],activeRulModel='lstm';
+
+function tick(){const d=new Date();document.getElementById('clockEl').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
+setInterval(tick,1000);tick();
+function toast(msg,type='info'){const w=document.getElementById('toastWrap');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;w.appendChild(el);setTimeout(()=>el.remove(),3800);}
+function log(msg){const el=document.getElementById('trainLog');const line=document.createElement('div');line.textContent='› '+msg;el.appendChild(line);el.scrollTop=el.scrollHeight;}
+async function apiFetch(path,opts={}){try{const r=await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts});return await r.json();}catch(e){return null;}}
+async function checkStatus(){const s=await apiFetch('/status');const el=document.getElementById('apiStatus');if(s){el.className='pill pill-ok pulse';el.textContent='● Live';document.getElementById('kModels').textContent=s.models_trained.length;}else{el.className='pill pill-err pulse';el.textContent='● Offline';}return s;}
+async function loadData(){const r=await apiFetch('/load_data',{method:'POST',body:JSON.stringify({data_dir:'data'})});if(r)toast(r.message,r.status==='ok'?'ok':'info');else toast('Backend kapalı','err');}
+async function trainAll(){const btn=document.getElementById('trainBtn');btn.textContent='⏳ Eğitiliyor...';btn.disabled=true;toast('Eğitim başlatılıyor...','info');const r=await apiFetch('/train',{method:'POST',body:JSON.stringify({model:'all'})});btn.innerHTML='<span>▶</span> Tüm Modelleri Eğit';btn.disabled=false;if(r&&r.started){toast('Başladı: '+r.started.join(', '),'ok');pollUntilDone();}else toast('Backend açık mı?','err');}
+async function trainGroup(group){const models=group==='rul'?['lstm','gru','transformer']:['rf','xgb','svm'];for(const m of models){await apiFetch('/train',{method:'POST',body:JSON.stringify({model:m})});log(m+' başlatıldı');}pollUntilDone();}
+async function pollUntilDone(){let tries=0;const iv=setInterval(async()=>{tries++;const s=await apiFetch('/status');if(!s){clearInterval(iv);return;}if(s.models_training.length===0){clearInterval(iv);toast('Eğitim tamamlandı','ok');await refreshAll();}else log('Eğitiliyor: '+s.models_training.join(', '));if(tries>60)clearInterval(iv);},5000);}
+async function refreshAll(){await Promise.all([refreshResults(),refreshUnits()]);}
+
+async function refreshResults(){
+  const data=await apiFetch('/results');if(!data||!Object.keys(data).length)return;RESULTS_CACHE=data;
+  let bestR2=-99,bestR2Name='—';
+  const MC={lstm:'rul',gru:'rul',transformer:'rul',rf:'fault',xgb:'fault',svm:'fault'};
+  Object.entries(MC).forEach(([k,type])=>{const d=data[k];if(!d)return;
+    const card=document.getElementById('mc-'+k);if(card){card.classList.remove('untrained');card.classList.add('best');}
+    if(type==='rul'){const r2=d.r2||0,rmse=d.rmse||0,mae=d.mae||0;
+      const mm=document.getElementById('mm-'+k);
+      if(mm)mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--green)">${r2.toFixed(3)}</div><div class="mcm-l">R²</div></div><div class="mcm"><div class="mcm-v">${rmse.toFixed(2)}</div><div class="mcm-l">RMSE</div></div><div class="mcm"><div class="mcm-v">${mae.toFixed(2)}</div><div class="mcm-l">MAE</div></div>`;
+      const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,r2*100).toFixed(0)+'%';
+      if(r2>bestR2){bestR2=r2;bestR2Name=d.name||k;}
+      if(k==='lstm')document.getElementById('kLstmR2').textContent=r2.toFixed(3);
+      if(k==='gru')document.getElementById('kGruR2').textContent=r2.toFixed(3);
+      if(k==='transformer')document.getElementById('kTstR2').textContent=r2.toFixed(3);}
+    if(type==='fault'||k==='xgb'){const f1=d.f1||0,auc=d.auc||0,prec=d.precision||0;
+      const mm=document.getElementById('mm-'+k);
+      if(mm&&type==='fault'){if(k==='svm'){const r2=d.r2||0,rmse=d.rmse||0,mae=d.mae||0;mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--green)">${r2.toFixed(3)}</div><div class="mcm-l">R²</div></div><div class="mcm"><div class="mcm-v">${rmse.toFixed(4)}</div><div class="mcm-l">RMSE</div></div><div class="mcm"><div class="mcm-v">${mae.toFixed(4)}</div><div class="mcm-l">MAE</div></div>`;const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,r2*100).toFixed(0)+'%';}
+      else{mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--violet)">${f1.toFixed(3)}</div><div class="mcm-l">F1</div></div><div class="mcm"><div class="mcm-v" style="color:var(--accent)">${auc.toFixed(3)}</div><div class="mcm-l">AUC</div></div><div class="mcm"><div class="mcm-v">${prec.toFixed(3)}</div><div class="mcm-l">Prec</div></div>`;const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,f1*100).toFixed(0)+'%';}}}});
+  document.getElementById('kBestR2').textContent=bestR2>-99?bestR2.toFixed(3):'—';document.getElementById('kBestM').textContent=bestR2Name;
+  const rulModels=['lstm','gru','transformer'].filter(k=>data[k]);if(rulModels.length){const best=rulModels.reduce((a,b)=>((data[a].rmse||99)<(data[b].rmse||99)?a:b));document.getElementById('kBestRmse').textContent=(data[best].rmse||0).toFixed(2);document.getElementById('kBestRmseM').textContent=data[best].name||best;}
+  if(data.rf){const d=data.rf;document.getElementById('kRfF1').textContent=(d.f1||0).toFixed(3);document.getElementById('kRfAuc').textContent=(d.auc||0).toFixed(3);setProgBar('rf','f1',d.f1||0);setProgBar('rf','prec',d.precision||0);setProgBar('rf','rec',d.recall||0);setProgBar('rf','auc',d.auc||0);const cm=d.confusion_matrix||[[0,0],[0,0]];document.getElementById('cm-rf').innerHTML=`<div class="cm-c cm-tn">TN: ${cm[0][0]}<br><span style="font-size:9px;font-weight:400">True Neg</span></div><div class="cm-c cm-fp">FP: ${cm[0][1]}<br><span style="font-size:9px;font-weight:400">False Pos</span></div><div class="cm-c cm-fn">FN: ${cm[1][0]}<br><span style="font-size:9px;font-weight:400">False Neg</span></div><div class="cm-c cm-tp">TP: ${cm[1][1]}<br><span style="font-size:9px;font-weight:400">True Pos</span></div>`;}
+  if(data.xgb){const d=data.xgb;document.getElementById('kXgbF1').textContent=(d.f1||0).toFixed(3);setProgBar('xgb','f1',d.f1||0);setProgBar('xgb','prec',d.precision||0);setProgBar('xgb','rec',d.recall||0);setProgBar('xgb','auc',d.auc||0);const vr2=d.val_r2||0,vrmse=d.val_rmse||0,vmae=d.val_mae||0;setProgBar('xgb','r2',vr2);setProgBar('xgb','rmse',Math.min(1,vrmse/50));setProgBar('xgb','mae',Math.min(1,vmae/30));document.getElementById('pv-xgb-r2').textContent=vr2.toFixed(3);document.getElementById('pv-xgb-rmse').textContent=vrmse.toFixed(2);document.getElementById('pv-xgb-mae').textContent=vmae.toFixed(2);const cm=d.confusion_matrix||[[0,0],[0,0]];document.getElementById('cm-xgb').innerHTML=`<div class="cm-c cm-tn">TN: ${cm[0][0]}<br><span style="font-size:9px;font-weight:400">True Neg</span></div><div class="cm-c cm-fp">FP: ${cm[0][1]}<br><span style="font-size:9px;font-weight:400">False Pos</span></div><div class="cm-c cm-fn">FN: ${cm[1][0]}<br><span style="font-size:9px;font-weight:400">False Neg</span></div><div class="cm-c cm-tp">TP: ${cm[1][1]}<br><span style="font-size:9px;font-weight:400">True Pos</span></div>`;}
+  if(data.svm){const d=data.svm;
+  document.getElementById('kSvmR2').textContent=(d.f1||0).toFixed(3);
+  setProgBar('svm','f1',d.f1||0);
+  setProgBar('svm','prec',d.precision||0);
+  setProgBar('svm','rec',d.recall||0);
+  setProgBar('svm','auc',d.auc||0);
+  const cm=d.confusion_matrix||[[0,0],[0,0]];
+  document.getElementById('cm-svm').innerHTML=`
+    <div class="cm-c cm-tn">TN: ${cm[0][0]}<br><span style="font-size:9px;font-weight:400">True Neg</span></div>
+    <div class="cm-c cm-fp">FP: ${cm[0][1]}<br><span style="font-size:9px;font-weight:400">False Pos</span></div>
+    <div class="cm-c cm-fn">FN: ${cm[1][0]}<br><span style="font-size:9px;font-weight:400">False Neg</span></div>
+    <div class="cm-c cm-tp">TP: ${cm[1][1]}<br><span style="font-size:9px;font-weight:400">True Pos</span></div>`;
+}
+  buildRulCmpChart(data);await selectRulChart(activeRulModel,null,true);document.getElementById('kModels').textContent=Object.keys(data).length;
+}
+function setProgBar(model,metric,pct){const el=document.getElementById('pf-'+model+'-'+metric);const vl=document.getElementById('pv-'+model+'-'+metric);if(el)el.style.width=Math.min(100,pct*100).toFixed(0)+'%';if(vl&&!vl.textContent.includes('.'))vl.textContent=(pct*100).toFixed(1)+'%';}
+async function selectRulChart(model,btn,silent=false){activeRulModel=model;
+  if(btn){document.querySelectorAll('#rulModelSel button').forEach(b=>{b.style.background='transparent';b.style.borderColor='var(--border)';b.style.color='var(--text3)';b.style.fontWeight='normal';});btn.style.background='var(--accent)';btn.style.borderColor='var(--accent)';btn.style.color='#fff';btn.style.fontWeight='600';}
+  const data=RESULTS_CACHE[model];if(!data){if(!silent)toast(model.toUpperCase()+' henüz eğitilmedi','info');return;}
+  const pd=await apiFetch('/predictions/'+model);if(!pd||!pd.predictions)return;
+  document.getElementById('bBestRulM').textContent=(data.name||model)+' · R²='+(data.r2||0).toFixed(3);
+  buildActVsPredChart(pd.actual||[],pd.predictions);if(pd.actual&&pd.predictions){buildErrHistChart(pd.actual,pd.predictions);buildScatterChart(pd.actual,pd.predictions);}}
+async function refreshUnits(){const data=await apiFetch('/units');if(!data||!data.units.length)return;UNITS_CACHE=data.units;const sum=data.summary;
+  document.getElementById('sHigh').textContent=sum.high;document.getElementById('sMed').textContent=sum.medium;document.getElementById('sLow').textContent=sum.low;document.getElementById('sTotal').textContent=sum.total;document.getElementById('kHigh').textContent=sum.high;
+  document.getElementById('kRul').textContent=(data.units.reduce((a,u)=>a+u.rul,0)/data.units.length).toFixed(1);
+  document.getElementById('bUnits').textContent=sum.total+' motor';document.getElementById('bHigh').textContent=sum.high+' kritik';document.getElementById('bMaintCrit').textContent=sum.high+' kritik';
+  document.getElementById('kMaintH').textContent=sum.high;document.getElementById('kMaintM').textContent=sum.medium;document.getElementById('kMaintL').textContent=sum.low;document.getElementById('kMaintTot').textContent=sum.total;
+  buildUnitList(data.units);buildRulDistChart(data.units);buildRiskPieChart(sum);buildFailProbChart(data.units);buildMaintList(data.units);buildAlerts(data.units);loadFleetSummary();if(data.units.length)selectUnit(data.units[0].unit,document.querySelector('.ui'));}
+function buildUnitList(units){const el=document.getElementById('unitList');el.innerHTML='';units.slice(0,12).forEach((u,i)=>{const dc=u.risk==='high'?'h':u.risk==='medium'?'m':'l';const rc=u.rul<30?'d':u.rul<60?'w':'g';const div=document.createElement('div');div.className='ui'+(i===0?' sel':'');div.innerHTML=`<div class="udot ${dc}"></div><div style="flex:1"><div class="un">Unit #${u.unit}</div><div class="um">${u.prob.toFixed(1)}% risk</div></div><div class="aru ${rc}">${u.rul.toFixed(0)}</div>`;div.onclick=()=>selectUnit(u.unit,div);el.appendChild(div);});}
+async function selectUnit(uid,el){
+  document.querySelectorAll('.ui').forEach(e=>e.classList.remove('sel'));
+  if(el)el.classList.add('sel');
+  const data=await apiFetch('/unit/'+uid);
+  if(!data)return;
+
+  // ── Sağ sidebar (kısa özet) ──────────────────────────────────────────
+  document.getElementById('dUnitName').textContent='Unit #'+data.unit;
+  const rc=data.rul<30?'d':data.rul<60?'w':'g';
+  document.getElementById('dRul').className='rul-big '+rc;
+  document.getElementById('dRul').textContent=data.rul.toFixed(1);
+  const col=data.risk==='high'?'var(--red)':data.risk==='medium'?'var(--amber)':'var(--green)';
+  document.getElementById('dProb').style.color=col;
+  document.getElementById('dProb').textContent='Arıza: '+data.prob.toFixed(1)+'%';
+  const rb=document.getElementById('dRisk');rb.className='rb rb-'+data.risk.charAt(0);rb.textContent=data.risk.toUpperCase();
+  const hb=document.getElementById('dHealthBars');
+  hb.innerHTML='<div style="font-size:10px;font-weight:600;color:var(--text3);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">Sağlık</div>';
+  Object.entries(data.sensors||{}).slice(0,5).forEach(([s,v])=>{
+    const pct=Math.min(100,Math.max(5,Math.abs(v)*40+50));
+    const c=pct>80?'var(--red)':pct>60?'var(--amber)':'var(--green)';
+    hb.innerHTML+=`<div class="pr"><span class="pl" style="width:55px;font-size:10px">${s}</span><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div><span class="pv" style="font-size:10px">${pct.toFixed(0)}%</span></div>`;
+  });
+  const sbody=document.getElementById('sensorBody');sbody.innerHTML='';
+  Object.entries(data.sensors||{}).forEach(([s,v])=>{
+    const pct=Math.min(100,Math.max(5,Math.abs(v)*40+50));
+    const c=pct>80?'var(--red)':pct>60?'var(--amber)':'var(--green)';
+    sbody.innerHTML+=`<tr><td style="color:var(--text2);font-weight:500">${s}</td><td style="color:var(--accent);font-weight:600">${v.toFixed(4)}</td><td><div class="sbar"><div class="sbar-f" style="width:${pct}%;background:${c}"></div></div></td></tr>`;
+  });
+  document.getElementById('engLbl').textContent=`Unit #${data.unit} · RUL ${data.rul.toFixed(1)}`;
+
+  // ── Motor Detay sekmesini doldur ──────────────────────────────────────
+  fillDetailTab(data);
+}
+
+const SENSOR_NAMES = {
+  s2:'LPC Çıkış Sıcaklığı',s3:'HPC Çıkış Sıcaklığı',s4:'LPT Çıkış Sıcaklığı',
+  s7:'HPC Çıkış Basıncı',s8:'Fan Hızı (Fiziksel)',s9:'Çekirdek Hızı (Fiziksel)',
+  s11:'HPC Statik Basınç',s12:'Yakıt Akışı / Ps30',s13:'Düz. Fan Hızı',s14:'Düz. Çekirdek Hızı',
+  s15:'Bypass Oranı',s17:'Bleed Entalpisi',s20:'HP Türbin Soğutma',s21:'LP Türbin Soğutma'
+};
+const SENSOR_UNIT = {
+  s2:'°R',s3:'°R',s4:'°R',s7:'psia',s8:'rpm',s9:'rpm',
+  s11:'psia',s12:'pps/psia',s13:'rpm',s14:'rpm',s15:'—',s17:'—',s20:'—',s21:'—'
+};
+
+function fillDetailTab(data){
+  document.getElementById('detailEmpty').style.display='none';
+  document.getElementById('detailContent').style.display='block';
+
+  const col=data.risk==='high'?'var(--red)':data.risk==='medium'?'var(--amber)':'var(--green)';
+
+  // Başlık
+  document.getElementById('dtUnitName').textContent='UNIT #'+data.unit;
+  const rc=data.rul<30?'d':data.rul<60?'w':'g';
+  document.getElementById('dtRul').className='rul-big '+rc;
+  document.getElementById('dtRul').textContent=data.rul.toFixed(1);
+  const rbe=document.getElementById('dtRisk');rbe.className='rb rb-'+data.risk.charAt(0);rbe.textContent=data.risk.toUpperCase();
+  document.getElementById('dtProb').textContent=data.prob.toFixed(1)+'%';
+  document.getElementById('dtProb').style.color=col;
+
+  // Maintenance window (cycle bazlı — tarih değil)
+  const maintCycles=Math.max(0,(data.rul||0)-5);
+  document.getElementById('dtMaintDate').textContent=Math.round(maintCycles)+' cycle sonra';
+
+  // ── Sensör tablosu ───────────────────────────────────────────────────
+  const sensors=data.sensors||{};
+  const sCount=Object.keys(sensors).length;
+  document.getElementById('dtSensorCount').textContent=sCount+' sensör';
+  const tbody=document.getElementById('dtSensorBody');
+  tbody.innerHTML='';
+  Object.entries(sensors).forEach(([s,v])=>{
+    const pct=Math.min(100,Math.max(5,Math.abs(v)*40+50));
+    const isCrit=pct>80,isWarn=pct>60;
+    const statusCol=isCrit?'var(--red)':isWarn?'var(--amber)':'var(--green)';
+    const statusTxt=isCrit?'⚠ Kritik':isWarn?'△ Uyarı':'✓ Normal';
+    const name=SENSOR_NAMES[s]||s;
+    const unit=SENSOR_UNIT[s]||'';
+    tbody.innerHTML+=`<tr>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${s.toUpperCase()}</td>
+      <td style="color:var(--text2);font-size:10px">${name}</td>
+      <td style="font-family:var(--mono);font-weight:600">${v.toFixed(4)} <span style="color:var(--text3);font-size:9px">${unit}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="flex:1;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${statusCol};border-radius:3px"></div>
+          </div>
+          <span style="font-size:9px;font-weight:700;color:${statusCol};white-space:nowrap">${statusTxt}</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  // ── Failure analysis (backend'den geliyorsa) ──────────────────────────
+  const fa=data.failure_analysis||{};
+
+  // Degradation rate
+  const deg=fa.degradation_rate||'unknown';
+  const degEl=document.getElementById('dtDegRate');
+  const degMap={stable:['Stabil','rgba(0,137,123,.1)','#00695c'],moderate:['Orta Hızlı','rgba(245,124,0,.1)','#e65100'],rapid:['Hızlı Bozulma','rgba(198,40,40,.1)','#c62828']};
+  const [degTxt,degBg,degCol]=degMap[deg]||['Bilinmiyor','var(--bg2)','var(--text3)'];
+  degEl.textContent=degTxt;degEl.style.background=degBg;degEl.style.color=degCol;
+
+  // Anomaly chips
+  const anomDiv=document.getElementById('dtAnomalies');
+  if(fa.primary_anomalies&&fa.primary_anomalies.length){
+    const catColor={'Termal Anomali':['rgba(198,40,40,.08)','#c62828'],'Basınç Anomalisi':['rgba(245,124,0,.08)','#e65100'],'Titreşim Anomalisi':['rgba(106,27,154,.08)','#6a1b9a'],'Yakıt Sistemi Anomalisi':['rgba(0,137,123,.08)','#00695c']};
+    anomDiv.innerHTML=fa.primary_anomalies.map(a=>{
+      const [bg,c]=catColor[a.category]||['var(--bg2)','var(--text3)'];
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;border:1px solid;border-color:${c}33;background:${bg};margin-bottom:6px">
+        <div style="font-size:12px;font-weight:600;color:${c}">${a.category}</div>
+        <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:${c}">Score: ${a.score.toFixed(1)}</div>
+      </div>`;
+    }).join('');
+  }else{
+    // Sensör değerlerinden basit anomali çıkar
+    const alerts=Object.entries(sensors).filter(([s,v])=>{
+      const pct=Math.min(100,Math.max(5,Math.abs(v)*40+50));return pct>70;
+    });
+    if(alerts.length){
+      anomDiv.innerHTML=alerts.map(([s])=>{
+        const pct=Math.min(100,Math.max(5,Math.abs(sensors[s])*40+50));
+        const isCrit=pct>80;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:${isCrit?'rgba(198,40,40,.06)':'rgba(245,124,0,.06)'};border:1px solid ${isCrit?'rgba(198,40,40,.2)':'rgba(245,124,0,.2)'};margin-bottom:5px">
+          <div style="font-size:12px;font-weight:600;color:${isCrit?'var(--red)':'var(--amber)'}">${SENSOR_NAMES[s]||s}</div>
+          <span style="font-size:10px;font-weight:700;color:${isCrit?'var(--red)':'var(--amber)'}">${isCrit?'Kritik':'Uyarı'}</span>
+        </div>`;
+      }).join('');
+    }else{
+      anomDiv.innerHTML='<div style="font-size:11px;color:var(--green);text-align:center;padding:10px;font-weight:600">✓ Anomali tespit edilmedi</div>';
+    }
+  }
+
+  // Sensor alerts
+  const alertDiv=document.getElementById('dtSensorAlerts');
+  if(fa.sensor_alerts&&fa.sensor_alerts.length){
+    alertDiv.innerHTML=fa.sensor_alerts.map(sa=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${sa.severity==='critical'?'rgba(198,40,40,.05)':'rgba(245,124,0,.05)'};border:1px solid ${sa.severity==='critical'?'rgba(198,40,40,.15)':'rgba(245,124,0,.15)'};margin-bottom:5px">
+        <div style="width:6px;height:6px;border-radius:50%;background:${sa.severity==='critical'?'var(--red)':'var(--amber)'};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:700;color:var(--text)">${sa.sensor.toUpperCase()} ${sa.direction} <span style="font-weight:400;color:var(--text3)">${SENSOR_NAMES[sa.sensor]||''}</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">z-score: ${sa.z_score} · trend: ${sa.trend_pct>0?'+':''}${sa.trend_pct}%</div>
+        </div>
+        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:${sa.severity==='critical'?'rgba(198,40,40,.1)':'rgba(245,124,0,.1)'};color:${sa.severity==='critical'?'var(--red)':'var(--amber)'}">${sa.severity==='critical'?'KRİTİK':'UYARI'}</span>
+      </div>`).join('');
+  }else{
+    // Sensörlerden hesapla
+    const warnSensors=Object.entries(sensors).filter(([,v])=>Math.min(100,Math.max(5,Math.abs(v)*40+50))>65);
+    if(warnSensors.length){
+      alertDiv.innerHTML=warnSensors.map(([s,v])=>{
+        const pct=Math.min(100,Math.max(5,Math.abs(v)*40+50));
+        const isCrit=pct>80;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${isCrit?'rgba(198,40,40,.05)':'rgba(245,124,0,.05)'};border:1px solid ${isCrit?'rgba(198,40,40,.15)':'rgba(245,124,0,.15)'};margin-bottom:5px">
+          <div style="width:6px;height:6px;border-radius:50%;background:${isCrit?'var(--red)':'var(--amber)'};flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:700;color:var(--text)">${s.toUpperCase()} <span style="font-weight:400;color:var(--text3)">${SENSOR_NAMES[s]||''}</span></div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Değer: ${v.toFixed(4)} · Sağlık: ${pct.toFixed(0)}%</div>
+          </div>
+          <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:${isCrit?'rgba(198,40,40,.1)':'rgba(245,124,0,.1)'};color:${isCrit?'var(--red)':'var(--amber)'}">${isCrit?'KRİTİK':'UYARI'}</span>
+        </div>`;
+      }).join('');
+    }else{
+      alertDiv.innerHTML='<div style="font-size:11px;color:var(--green);text-align:center;padding:10px;font-weight:600">✓ Tüm sensörler normal aralıkta</div>';
+    }
+  }
+
+  // Actions
+  const actMap={high:['Acil rulman muayenesi','Mil hizalama kontrolü','Soğutma sistemi testi','Kompresör kanat muayenesi'],medium:['48h içinde borescope muayenesi','Yağ analizi','Titreşim ölçüm kontrolü'],low:['Rutin izleme devam etmeli','Sonraki bakımda kontrol yeterli']};
+  const actions=data.maintenance&&data.maintenance.actions?data.maintenance.actions:(actMap[data.risk]||[]);
+  document.getElementById('dtActions').innerHTML=actions.map(a=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--green);font-weight:700;flex-shrink:0">✓</span>
+      <span style="font-size:11px;color:var(--text)">${a}</span>
+    </div>`).join('');
+
+  // Sekmeye geç
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('t-detail').classList.add('on');
+  document.getElementById('tab-detail').classList.add('on');
+}
+
+function mkChart(id,cfg){if(charts[id])charts[id].destroy();const c=document.getElementById(id);if(!c)return;charts[id]=new Chart(c,cfg);}
+const gridOpts={color:'rgba(208,215,222,0.6)',drawBorder:false};
+function buildRulDistChart(units){const bins={};for(let i=0;i<=12;i++)bins[i*10]=0;units.forEach(u=>{const b=Math.floor(u.rul/10)*10;bins[b]=(bins[b]||0)+1;});mkChart('cRulDist',{type:'bar',data:{labels:Object.keys(bins).map(b=>b+'–'+(parseInt(b)+10)),datasets:[{data:Object.values(bins),backgroundColor:Object.keys(bins).map(b=>parseInt(b)<30?'rgba(198,40,40,.7)':parseInt(b)<60?'rgba(245,124,0,.65)':'rgba(0,151,167,.6)'),borderRadius:3,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:{font:{size:10},maxRotation:45}},y:{grid:gridOpts,ticks:{font:{size:10}}}}}});}
+function buildRiskPieChart(sum){mkChart('cRiskPie',{type:'doughnut',data:{labels:['Kritik','Uyarı','Normal'],datasets:[{data:[sum.high,sum.medium,sum.low],backgroundColor:['rgba(198,40,40,.75)','rgba(245,124,0,.7)','rgba(0,137,123,.65)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12,usePointStyle:true}}},cutout:'65%'}});}
+function buildFailProbChart(units){const top=units.slice(0,30);mkChart('cFailProb',{type:'bar',data:{labels:top.map(u=>'U'+u.unit),datasets:[{data:top.map(u=>u.prob.toFixed(1)),backgroundColor:top.map(u=>u.prob>70?'rgba(198,40,40,.7)':u.prob>40?'rgba(245,124,0,.65)':'rgba(106,27,154,.55)'),borderRadius:3,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:gridOpts,min:0,max:105,ticks:{callback:v=>v+'%',font:{size:10}}}}}});}
+function buildActVsPredChart(actual,preds){const n=Math.min(80,actual.length);mkChart('cActVsPred',{type:'line',data:{labels:Array.from({length:n},(_,i)=>i+1),datasets:[{label:'Gerçek',data:actual.slice(0,n),borderColor:'#00897b',backgroundColor:'rgba(0,137,123,.06)',borderWidth:2,pointRadius:0,tension:.3,fill:true},{label:'Tahmin',data:preds.slice(0,n),borderColor:'#0097a7',borderWidth:2,borderDash:[5,3],pointRadius:0,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:10}}},scales:{x:{grid:gridOpts,ticks:{font:{size:10}}},y:{grid:gridOpts,ticks:{font:{size:10}}}}}});}
+function buildErrHistChart(actual,preds){const bins={};actual.map((a,i)=>Math.round(a-preds[i])).forEach(e=>{const b=Math.floor(e/10)*10;bins[b]=(bins[b]||0)+1;});const lbl=Object.keys(bins).map(Number).sort((a,b)=>a-b);mkChart('cErrHist',{type:'bar',data:{labels:lbl.map(String),datasets:[{data:lbl.map(l=>bins[l]),backgroundColor:'rgba(0,151,167,.55)',borderRadius:3,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:gridOpts,ticks:{font:{size:10}}}}}});}
+function buildScatterChart(actual,preds){const pts=actual.slice(0,80).map((a,i)=>({x:a,y:preds[i]}));const mx=Math.max(...actual.slice(0,80));mkChart('cScatter',{type:'scatter',data:{datasets:[{label:'Motor',data:pts,backgroundColor:'rgba(0,151,167,.5)',borderColor:'transparent',pointRadius:4},{label:'İdeal',data:[{x:0,y:0},{x:mx,y:mx}],type:'line',borderColor:'rgba(198,40,40,.45)',borderDash:[5,3],pointRadius:0,borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:{font:{size:10}}},y:{grid:gridOpts,ticks:{font:{size:10}}}}}});}
+function buildRulCmpChart(data){const models=['lstm','gru','transformer'];mkChart('cRulCmp',{type:'bar',data:{labels:models.map(m=>(data[m]&&data[m].name)||m.toUpperCase()),datasets:[{label:'R²×100',data:models.map(m=>((data[m]&&data[m].r2)||0)*100),backgroundColor:'rgba(0,137,123,.65)',borderRadius:4,borderWidth:0},{label:'RMSE',data:models.map(m=>(data[m]&&data[m].rmse)||0),backgroundColor:'rgba(198,40,40,.6)',borderRadius:4,borderWidth:0},{label:'MAE',data:models.map(m=>(data[m]&&data[m].mae)||0),backgroundColor:'rgba(245,124,0,.6)',borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:10}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:gridOpts,ticks:{font:{size:10}}}}}});}
+function buildSvmPredChart(actual,preds){const n=Math.min(80,actual.length);mkChart('cSvmPred',{type:'line',data:{labels:Array.from({length:n},(_,i)=>i+1),datasets:[{data:actual.slice(0,n),borderColor:'#00897b',borderWidth:2,pointRadius:0,tension:.3},{data:preds.slice(0,n),borderColor:'#6a1b9a',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:gridOpts,ticks:{font:{size:9}}}}}});}
+function buildAlerts(units){const el=document.getElementById('alertList');el.innerHTML='';[...units.filter(u=>u.risk==='high').slice(0,5),...units.filter(u=>u.risk==='medium').slice(0,3)].forEach(u=>{const lv=u.risk==='high'?'d':'w';const ic=u.risk==='high'?'!':'△';const col=u.risk==='high'?'var(--red)':'var(--amber)';const lbl=u.risk==='high'?'Kritik':'Uyarı';el.innerHTML+=`<div class="al-item"><div class="al-ic al-${lv}">${ic}</div><div><div class="al-title" style="color:${col}">${lbl} — Unit #${u.unit}</div><div class="al-meta">RUL ${u.rul.toFixed(1)} · %${u.prob.toFixed(1)}</div></div></div>`;});}
+let ganttView='week';
+let ganttUnits=[];
+
+function setGanttView(view,btn){
+  ganttView=view;
+  document.getElementById('gv-week').style.background=view==='week'?'var(--accent)':'transparent';
+  document.getElementById('gv-week').style.color=view==='week'?'#fff':'var(--text3)';
+  document.getElementById('gv-month').style.background=view==='month'?'var(--accent)':'transparent';
+  document.getElementById('gv-month').style.color=view==='month'?'#fff':'var(--text3)';
+  if(ganttUnits.length)buildGantt(ganttUnits);
+}
+
+function rulToDate(rul){
+  // 1 RUL ≈ 1 flight cycle ≈ 1 day (simplified)
+  const d=new Date();
+  d.setDate(d.getDate()+Math.round(rul));
+  return d;
+}
+
+function buildGantt(units){
+  ganttUnits=units;
+  const el=document.getElementById('ganttChart');
+  const sorted=[...units].sort((a,b)=>(b.priority_score||0)-(a.priority_score||0)).slice(0,16);
+
+  // X ekseni: cycle cinsinden pencere
+  // Haftalık mod → 0–30 cycle, Aylık mod → 0–125 cycle
+  const isWeek=ganttView==='week';
+  const totalCycles=isWeek?30:125;
+  const tickCount=isWeek?6:5;
+  const tickSize=totalCycles/tickCount;
+  const SAFETY=5;  // güvenlik marjı (cycle)
+
+  const LABEL_W=80;
+  const TEAM_W=38;
+  const COL_W=isWeek?72:66;
+  const ROW_H=38;
+  const HEADER_H=36;
+  const CHART_W=tickCount*COL_W;
+  const totalW=LABEL_W+CHART_W+TEAM_W+8;
+  const totalH=HEADER_H+sorted.length*ROW_H+24;
+
+  const C={
+    red:'#ef5350', amber:'#ffa726', green:'#26a69a',
+    redFill:'rgba(239,83,80,.8)', amberFill:'rgba(255,167,38,.75)', greenFill:'rgba(38,166,154,.75)',
+    window:'rgba(0,151,167,.1)',
+    border:'#e4e8ee', bg:'#f6f8fa', panel:'#ffffff',
+    text:'#0f1923', muted:'#7a909f',
+    teamA:'#0097a7', teamB:'#6a1b9a',
+  };
+
+  function riskColor(r){return r==='high'?C.red:r==='medium'?C.amber:C.green;}
+  function riskFill(r){return r==='high'?C.redFill:r==='medium'?C.amberFill:C.greenFill;}
+
+  let svg=`<svg width="${totalW}" height="${totalH}" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">`;
+  svg+=`<rect width="${totalW}" height="${totalH}" fill="${C.panel}"/>`;
+
+  // Zebra
+  for(let i=0;i<tickCount;i++){
+    const x=LABEL_W+i*COL_W;
+    if(i%2===1) svg+=`<rect x="${x}" y="${HEADER_H}" width="${COL_W}" height="${totalH-HEADER_H}" fill="${C.bg}" opacity=".55"/>`;
+  }
+
+  // Header
+  svg+=`<rect x="0" y="0" width="${totalW}" height="${HEADER_H}" fill="${C.bg}"/>`;
+  svg+=`<line x1="0" y1="${HEADER_H}" x2="${totalW}" y2="${HEADER_H}" stroke="${C.border}" stroke-width="1.5"/>`;
+  svg+=`<line x1="${LABEL_W}" y1="0" x2="${LABEL_W}" y2="${totalH}" stroke="${C.border}" stroke-width="1"/>`;
+
+  // Motor başlığı
+  svg+=`<text x="${LABEL_W/2}" y="${HEADER_H/2+5}" text-anchor="middle" fill="${C.muted}" font-size="11" font-weight="600">Motor</text>`;
+
+  // Cycle tick başlıkları
+  for(let i=0;i<=tickCount;i++){
+    const x=LABEL_W+i*COL_W;
+    const cycleVal=Math.round(i*tickSize);
+    svg+=`<text x="${x}" y="${HEADER_H/2+5}" text-anchor="middle" fill="${C.muted}" font-size="10">${cycleVal}c</text>`;
+    svg+=`<line x1="${x}" y1="${HEADER_H}" x2="${x}" y2="${totalH-24}" stroke="${C.border}" stroke-width=".5"/>`;
+  }
+
+  // Satırlar
+  sorted.forEach((u,ri)=>{
+    const y=HEADER_H+ri*ROW_H;
+    const rCol=riskColor(u.risk);
+    const rFill=riskFill(u.risk);
+    const team=ri%2===0?'A':'B';
+    const teamCol=ri%2===0?C.teamA:C.teamB;
+
+    svg+=`<line x1="0" y1="${y+ROW_H}" x2="${totalW}" y2="${y+ROW_H}" stroke="${C.border}" stroke-width=".5"/>`;
+
+    // Risk şeridi (sol)
+    svg+=`<rect x="2" y="${y+9}" width="4" height="${ROW_H-18}" rx="2" fill="${rCol}"/>`;
+
+    // Motor no + priority score
+    svg+=`<text x="${LABEL_W-10}" y="${y+ROW_H/2+1}" text-anchor="end" fill="${C.text}" font-size="12" font-weight="700">#${u.unit}</text>`;
+    svg+=`<text x="${LABEL_W-10}" y="${y+ROW_H/2+13}" text-anchor="end" fill="${C.muted}" font-size="9">${(u.priority_score||0).toFixed(0)}p</text>`;
+
+    const barX=LABEL_W;
+
+    // Cycle değerlerini piksel pozisyona çevir
+    const rul=u.rul||0;
+    const safeRul=Math.max(0, rul-SAFETY);  // güvenli bakım noktası
+
+    // Görünür pencereye sığdır (clamp)
+    const windowPx=(Math.min(safeRul, totalCycles)/totalCycles)*CHART_W;
+    const failPx=(Math.min(rul, totalCycles)/totalCycles)*CHART_W;
+
+    // 1) Maintenance window arka planı (0 → safeRul)
+    if(windowPx>0){
+      svg+=`<rect x="${barX}" y="${y+8}" width="${windowPx}" height="${ROW_H-16}" rx="4" fill="${C.window}"/>`;
+    }
+
+    // 2) Planned slot bar
+    const barH=16;
+    const barY=y+(ROW_H-barH)/2;
+    const barW=Math.max(3, windowPx);
+    svg+=`<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="4" fill="${rFill}"/>`;
+
+    // Bar içi: cycle sayısı (yeterli genişlikte)
+    if(barW>32){
+      svg+=`<text x="${barX+barW-5}" y="${barY+barH/2+4}" text-anchor="end" fill="white" font-size="9" font-weight="700">${Math.round(safeRul)}c</text>`;
+    }
+
+    // 3) Failure point (RUL = failPx) — çizgi + ok
+    const fpX=barX+failPx;
+    if(failPx>windowPx+6 && fpX<LABEL_W+CHART_W-2){
+      svg+=`<line x1="${fpX}" y1="${y+6}" x2="${fpX}" y2="${y+ROW_H-6}" stroke="${rCol}" stroke-width="1.5" stroke-dasharray="3,2" opacity=".85"/>`;
+      svg+=`<polygon points="${fpX},${y+5} ${fpX-4},${y+12} ${fpX+4},${y+12}" fill="${rCol}"/>`;
+    }
+
+    // 4) Team badge — sağ sabit sütun, daire
+    const bCX=LABEL_W+CHART_W+TEAM_W/2;
+    const bCY=y+ROW_H/2;
+    svg+=`<circle cx="${bCX}" cy="${bCY}" r="13" fill="${teamCol}" opacity=".12"/>`;
+    svg+=`<circle cx="${bCX}" cy="${bCY}" r="13" fill="none" stroke="${teamCol}" stroke-width="1" opacity=".4"/>`;
+    svg+=`<text x="${bCX}" y="${bCY+4}" text-anchor="middle" fill="${teamCol}" font-size="10" font-weight="700">T${team}</text>`;
+  });
+
+  // Legend
+  const LY=totalH-12;
+  let lx=LABEL_W;
+  svg+=`<rect x="${lx}" y="${LY-4}" width="12" height="8" rx="2" fill="${C.window}" stroke="rgba(0,151,167,.3)" stroke-width="1"/>`;
+  svg+=`<text x="${lx+16}" y="${LY+3}" fill="${C.muted}" font-size="9">Maintenance Window (cycle)</text>`;lx+=150;
+  svg+=`<rect x="${lx}" y="${LY-4}" width="12" height="8" rx="2" fill="rgba(239,83,80,.8)"/>`;
+  svg+=`<text x="${lx+16}" y="${LY+3}" fill="${C.muted}" font-size="9">Planned Slot</text>`;lx+=100;
+  svg+=`<line x1="${lx+6}" y1="${LY-5}" x2="${lx+6}" y2="${LY+5}" stroke="#ef5350" stroke-width="1.5" stroke-dasharray="2,1"/>`;
+  svg+=`<polygon points="${lx+6},${LY-7} ${lx+2},${LY-2} ${lx+10},${LY-2}" fill="#ef5350"/>`;
+  svg+=`<text x="${lx+14}" y="${LY+3}" fill="${C.muted}" font-size="9">Predicted Failure (RUL=0)</text>`;
+
+  // X ekseni etiketi
+  svg+=`<text x="${LABEL_W+CHART_W/2}" y="${totalH-1}" text-anchor="middle" fill="${C.muted}" font-size="9" font-style="italic"></text>`;
+
+  svg+='</svg>';
+  el.innerHTML=svg;
+}
+
+function buildMaintList(units){
+  ganttUnits=units;
+  buildGantt(units);
+  const crit=units.filter(u=>u.risk==='high').length;
+  document.getElementById('bMaintCrit').textContent=crit+' kritik';
+
+  const el=document.getElementById('maintList');
+  el.innerHTML='';
+  [...units].sort((a,b)=>(b.priority_score||0)-(a.priority_score||0)).slice(0,20).forEach((u,idx)=>{
+    const col=u.risk==='high'?'var(--red)':u.risk==='medium'?'var(--amber)':'var(--green)';
+    const team=idx%2===0?'Team A':'Team B';
+    const teamCol=idx%2===0?'var(--accent)':'var(--violet)';
+    const act=u.risk==='high'?'Acil bakım gerekli':u.risk==='medium'?'Yakın izlem gerekli':'Normal izleme';
+    
+    const window_cycles=Math.max(0,(u.rul||0)-5);
+    const dateStr=Math.round(window_cycles)+' cycle içinde';
+    const ps=u.priority_score||0;
+    const psW=Math.min(100,ps);
+
+    // Actions by risk
+    const actionMap={
+      high:['Acil rulman muayenesi','Mil hizalama kontrolü','Soğutma sistemi testi'],
+      medium:['48h içinde borescope muayenesi','Yağ analizi','Titreşim ölçüm kontrolü'],
+      low:['Rutin izleme devam']
+    };
+    const actions=(actionMap[u.risk]||[]).map(a=>`<div style="font-size:10px;color:var(--text2);padding:1px 0">✓ ${a}</div>`).join('');
+
+    el.innerHTML+=`<div style="background:#fff;border:1px solid var(--border);border-left:3px solid ${col};border-radius:var(--radius);padding:10px 14px;margin-bottom:6px;box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <!-- Sol: birim + risk -->
+        <div style="flex-shrink:0;text-align:center;min-width:42px">
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${col}">#${u.unit}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:1px">${u.rul.toFixed(0)} cycle</div>
+        </div>
+        <!-- Orta: detaylar -->
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">${act}</div>
+            <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(0,0,0,.05);color:${teamCol}">${team}</span>
+          </div>
+          <!-- Priority bar -->
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <div style="font-size:9px;color:var(--text3);width:72px;flex-shrink:0">Priority Score</div>
+            <div style="flex:1;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+              <div style="width:${psW}%;height:100%;background:linear-gradient(90deg,#0097a7,#c62828);border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text);width:32px;text-align:right">${ps.toFixed(0)}</div>
+          </div>
+          <!-- Tarihler -->
+          <div style="display:flex;gap:12px;margin-bottom:5px">
+            <div style="font-size:10px"><span style="color:var(--text3)">Bakım penceresi:</span> <strong style="font-family:var(--mono)">${dateStr}</strong></div>
+            <div style="font-size:10px"><span style="color:var(--text3)">Arıza olasılığı:</span> <strong style="color:${col}">${u.prob.toFixed(1)}%</strong></div>
+          </div>
+          <!-- Actions -->
+          <div style="border-top:1px solid var(--border);padding-top:5px;margin-top:3px">${actions}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+}
+
+async function loadFleetSummary(){
+  const data=await apiFetch('/maintenance_plan');
+  if(!data||!data.fleet_summary)return;
+  const fs=data.fleet_summary;
+
+  // Fleet summary kartları
+  document.getElementById('fleetBadge').style.display='inline-flex';
+  document.getElementById('fleetSummaryContent').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent)">${fs.total_units}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Toplam Motor</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--red)">${fs.critical}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Kritik</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--amber)">${fs.estimated_downtime_h}h</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Tahmini Kesinti</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--green)">$${(fs.potential_cost_saved||0).toLocaleString()}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Önlenen Maliyet</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:8px;font-family:var(--mono);text-align:center">
+      Safety Margin: 5 cycle · Dynamic Window aktif
+    </div>`;
+
+  // Ekip atama tablosu
+  if(fs.team_schedule&&Object.keys(fs.team_schedule).length){
+    const teams=Object.entries(fs.team_schedule);
+    const maxLen=Math.max(...teams.map(([,v])=>v.length));
+    let rows='';
+    for(let i=0;i<Math.min(maxLen,8);i++){
+      rows+=`<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 10px;font-size:11px;font-weight:600;color:var(--text3)">${i+1}.</td>`;
+      teams.forEach(([team,units],ti)=>{
+        const u=units[i]||'—';
+        const c=ti===0?'var(--accent)':'var(--violet)';
+        rows+=`<td style="padding:6px 10px;text-align:center;font-family:var(--mono);font-size:12px;font-weight:${u!=='—'?'700':'400'};color:${u!=='—'?c:'var(--text3)'}">${u}</td>`;
+      });
+      rows+='</tr>';
+    }
+    document.getElementById('resourceTable').innerHTML=`
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid var(--border)">
+          <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--bg2)">Sıra</th>
+          ${teams.map(([t],ti)=>`<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:700;color:${ti===0?'var(--accent)':'var(--violet)'};background:var(--bg2)">${t}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+}
+
+function switchTab(id,btn){document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));document.getElementById(id).classList.add('on');btn.classList.add('on');}
+
+/* ENGINE — minimal tech */
+(function(){const eng=document.getElementById('engineCanvas');const ctx=eng.getContext('2d');let ang=0;
+function draw(){ctx.clearRect(0,0,192,130);const cx=96,cy=65;ang+=0.008;
+/* bg */ctx.fillStyle='#f6f8fa';ctx.fillRect(0,0,192,130);
+/* grid */ctx.strokeStyle='rgba(208,215,222,0.5)';ctx.lineWidth=.5;for(let x=0;x<192;x+=16){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,130);ctx.stroke();}for(let y=0;y<130;y+=16){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(192,y);ctx.stroke();}
+/* glow */const g=ctx.createRadialGradient(cx,cy,5,cx,cy,55);g.addColorStop(0,'rgba(0,188,212,.08)');g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.fillRect(0,0,192,130);
+/* rings */[40,28,18].forEach((r,i)=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle=`rgba(0,151,167,${.2-i*.05})`;ctx.lineWidth=1;ctx.stroke();});
+/* rotating blades */ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);for(let i=0;i<6;i++){ctx.save();ctx.rotate(i*Math.PI/3);ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(3,-26);ctx.lineTo(-3,-26);ctx.closePath();ctx.fillStyle=`rgba(0,151,167,${.5+Math.sin(ang+i)*.2})`;ctx.fill();ctx.restore();}ctx.restore();
+/* counter blades */ctx.save();ctx.translate(cx,cy);ctx.rotate(-ang*1.5);for(let i=0;i<4;i++){ctx.save();ctx.rotate(i*Math.PI/2);ctx.beginPath();ctx.moveTo(0,-5);ctx.lineTo(2,-16);ctx.lineTo(-2,-16);ctx.closePath();ctx.fillStyle=`rgba(0,137,123,${.4+Math.sin(-ang*1.5+i)*.15})`;ctx.fill();ctx.restore();}ctx.restore();
+/* center */ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fillStyle='#0097a7';ctx.fill();ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+/* exhaust */const eg=ctx.createRadialGradient(cx+52,cy,0,cx+52,cy,14);eg.addColorStop(0,'rgba(245,124,0,.2)');eg.addColorStop(1,'transparent');ctx.fillStyle=eg;ctx.beginPath();ctx.ellipse(cx+50,cy,4,12,0,0,Math.PI*2);ctx.fill();
+requestAnimationFrame(draw);}draw();})();
+
+// ── IMPORT ────────────────────────────────────────────
+let importedFileList=[];
+function handleDrop(e){e.preventDefault();document.getElementById("dropZone").classList.remove("dz-active");addFiles(e.dataTransfer.files);}
+function handleFileSelect(files){addFiles(files);}
+function addFiles(files){
+  Array.from(files).forEach(f=>{
+    if(!importedFileList.find(x=>x.name===f.name&&x.size===f.size)){importedFileList.push(f);}
+  });
+  renderFiles();
+}
+function renderFiles(){
+  const el=document.getElementById("importedFiles");
+  el.innerHTML="";
+  importedFileList.forEach((f,i)=>{
+    const ext=f.name.split(".").pop().toUpperCase();
+    const size=f.size>1024*1024?(f.size/1024/1024).toFixed(1)+"MB":(f.size/1024).toFixed(0)+"KB";
+    el.innerHTML+=`<div class="file-chip"><span class="fc-type">${ext}</span><span title="${f.name}">${f.name}</span><span style="color:var(--text3);font-size:9px;flex-shrink:0">${size}</span><button class="fc-rm" onclick="removeFile(${i})">✕</button></div>`;
+  });
+  document.getElementById("importBtn").style.display=importedFileList.length?"flex":"none";
+  document.getElementById("importStatus").textContent="";
+}
+function removeFile(i){importedFileList.splice(i,1);renderFiles();}
+// ── IMPORT ────────────────────────────────────────────
+async function importData(){
+  if(!importedFileList.length)return;
+  const btn=document.getElementById("importBtn");
+  const status=document.getElementById("importStatus");
+  btn.disabled=true;btn.innerHTML="<span>↑</span> Yükleniyor...";
+  status.textContent="";
+  const fd=new FormData();
+  importedFileList.forEach(f=>fd.append("files",f));
+  try{
+    const r=await fetch(API+"/upload",{method:"POST",body:fd});
+    const d=await r.json();
+    if(d.status==="ok"){
+      toast("Yüklendi: "+d.uploaded.join(", "),"ok");
+      status.textContent="✓ "+d.uploaded.length+" dosya yüklendi"+(d.errors.length?" · "+d.errors.length+" hata":"");
+      importedFileList=[];renderFiles();
+      await refreshUnits();
+    }else{
+      toast(d.message||"Hata","err");
+      status.textContent="✗ "+(d.message||"Yükleme başarısız");
+    }
+  }catch(e){
+    toast("Backend bağlantısı yok","err");
+    status.textContent="✗ Backend bağlantısı yok";
+  }
+  btn.disabled=false;btn.innerHTML="<span>↑</span> Veriyi Yükle";
+}
+
+// ── EXPORT ────────────────────────────────────────────
+async function exportPDF(){
+  // Backend'den hazır HTML raporu al, yeni sekmede aç
+  try{
+    const r=await fetch(API+"/export/pdf");
+    if(!r.ok){toast("Backend bağlantısı yok","err");return;}
+    const html=await r.text();
+    const w=window.open("","_blank");
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>w.print(),600);
+    toast("PDF raporu açıldı","ok");
+  }catch(e){
+    // Backend yoksa frontend verisiyle oluştur
+    if(!Object.keys(RESULTS_CACHE).length&&!UNITS_CACHE.length){toast("Önce modelleri eğitin","info");return;}
+    toast("PDF hazırlanıyor (offline)...","info");
+    const rows=UNITS_CACHE.map(u=>`<tr><td>#${u.unit}</td><td style="color:${u.risk==="high"?"#c62828":u.risk==="medium"?"#f57c00":"#00897b"};font-weight:700">${u.risk.toUpperCase()}</td><td>${u.rul.toFixed(1)}</td><td>${u.prob.toFixed(1)}%</td></tr>`).join("");
+    const modelRows=Object.entries(RESULTS_CACHE).map(([k,v])=>`<tr><td>${k.toUpperCase()}</td><td>${(v.r2||"—")}</td><td>${(v.rmse||"—")}</td><td>${(v.mae||"—")}</td><td>${(v.f1||"—")}</td><td>${(v.auc||"—")}</td></tr>`).join("");
+    const w=window.open("","_blank");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>HELIOS PHM Raporu</title><style>body{font-family:Inter,Arial,sans-serif;padding:32px;color:#0f1923;font-size:13px;max-width:900px;margin:0 auto}h1{font-size:22px;font-weight:700;color:#0097a7;margin-bottom:4px}h2{font-size:15px;font-weight:600;margin:28px 0 10px;border-bottom:2px solid #e4e8ee;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:#f6f8fa;text-align:left;padding:8px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7a909f;border-bottom:2px solid #d0d7de}td{padding:7px 10px;border-bottom:1px solid #e4e8ee}.meta{font-size:11px;color:#7a909f;margin-bottom:24px}.btn{padding:9px 22px;background:#0097a7;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-top:24px}@media print{.btn{display:none}}</style></head><body><h1>HELIOS PHM — Analiz Raporu</h1><div class="meta">Oluşturma tarihi: ${new Date().toLocaleString("tr-TR")}</div><h2>Motor Durumu</h2><table><thead><tr><th>Motor</th><th>Risk</th><th>RUL (cycle)</th><th>Arıza Olasılığı</th></tr></thead><tbody>${rows||"<tr><td colspan=4 style='text-align:center;color:#7a909f'>Veri yok</td></tr>"}</tbody></table><h2>Model Performansı</h2><table><thead><tr><th>Model</th><th>R²</th><th>RMSE</th><th>MAE</th><th>F1</th><th>AUC</th></tr></thead><tbody>${modelRows||"<tr><td colspan=6 style='text-align:center;color:#7a909f'>Veri yok</td></tr>"}</tbody></table><button class="btn" onclick="window.print()">Yazdır / PDF Kaydet</button></body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+  }
+}
+
+async function exportExcel(){
+  // Önce backend'den CSV indir
+  try{
+    const r=await fetch(API+"/export/excel");
+    if(!r.ok) throw new Error("Backend hatası");
+    const blob=await r.blob();
+    const cd=r.headers.get("Content-Disposition")||"";
+    const match=cd.match(/filename="(.+?)"/);
+    const fname=match?match[1]:"helios_raporu.csv";
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=fname;a.click();
+    URL.revokeObjectURL(url);
+    toast("Excel (CSV) indirildi","ok");
+  }catch(e){
+    // Offline fallback
+    if(!Object.keys(RESULTS_CACHE).length&&!UNITS_CACHE.length){toast("Önce modelleri eğitin","info");return;}
+    toast("Excel indiriliyor (offline)...","info");
+    let csv="\uFEFFHELIOS PHM Raporu\nTarih,"+new Date().toLocaleString("tr-TR")+"\n\n";
+    csv+="MOTOR DURUMU\nMotor,Risk,RUL (cycle),Arıza Olasılığı (%)\n";
+    UNITS_CACHE.forEach(u=>{csv+=`#${u.unit},${u.risk.toUpperCase()},${u.rul.toFixed(1)},${u.prob.toFixed(1)}\n`;});
+    csv+="\nMODEL PERFORMANSI\nModel,R2,RMSE,MAE,F1,AUC\n";
+    Object.entries(RESULTS_CACHE).forEach(([k,v])=>{csv+=`${k.toUpperCase()},${v.r2||""},${v.rmse||""},${v.mae||""},${v.f1||""},${v.auc||""}\n`;});
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="helios_raporu_"+new Date().toISOString().slice(0,10)+".csv";
+    a.click();URL.revokeObjectURL(url);
+    toast("Excel (CSV) indirildi","ok");
+  }
+}
+async function init(){const s=await checkStatus();if(s&&s.models_trained.length>0){toast('Model sonuçları yükleniyor...','info');await refreshAll();}}
+init();setInterval(async()=>{const s=await checkStatus();if(s&&s.models_trained.length>0)await refreshAll();},30000);
+</script>
+</body>
+</html>

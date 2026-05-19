@@ -214,8 +214,6 @@ def _load_demo_results():
                     "risk_level":rk,"maintenance_recommendation":_mrec(rk)})
     xgb = {
         "name":"XGBoost","type":"both",
-        "mae":12.38,"rmse":17.21,"r2":0.8834,
-        "val_mae":13.11,"val_rmse":18.03,"val_r2":0.8791,
         "accuracy":0.8800,
         "precision": 0.8571, "recall": 0.8704, "f1": 0.8637,
         "auc": 0.9487, "auc_test": 0.9401,
@@ -233,7 +231,6 @@ def _load_demo_results():
     svm = {
         "name":"SVM (RBF)","type":"classification",
         "f1": svm_f1, "precision": svm_prec, "recall": svm_rec, "auc": svm_auc,
-        "r2": svm_f1, "rmse": round(1.0 - svm_prec, 4), "mae": round(1.0 - svm_rec, 4),
         "confusion_matrix":confusion_matrix(y_bin,svm_preds).tolist(),
         "best_params":{"C":1,"kernel":"rbf","class_weight":"balanced"},
         "duration_s":35.2,

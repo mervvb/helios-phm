@@ -412,7 +412,7 @@ canvas{display:block}
               <div class="mc-metrics" id="mm-xgb">
                 <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">F1</div></div>
                 <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">AUC</div></div>
-                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">Prec</div></div>
               </div>
               <div class="mc-bar"><div class="mc-bar-f" id="mb-xgb" style="width:0%;background:var(--violet)"></div></div>
             </div>
@@ -420,9 +420,9 @@ canvas{display:block}
               <div class="mc-top"><span class="mc-name">SVM</span><span class="mc-tag bv">Arıza</span></div>
               
               <div class="mc-metrics" id="mm-svm">
-                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">R²</div></div>
-                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">RMSE</div></div>
-                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">MAE</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">F1</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">AUC</div></div>
+                <div class="mcm"><div class="mcm-v" style="color:var(--text3)">—</div><div class="mcm-l">Prec</div></div>
               </div>
               <div class="mc-bar"><div class="mc-bar-f" id="mb-svm" style="width:0%;background:var(--violet)"></div></div>
             </div>
@@ -464,7 +464,7 @@ canvas{display:block}
         <div class="kpi"><div class="kpi-top"><div class="kpi-l">RF F1</div></div><div class="kpi-v v" id="kRfF1">—</div><div class="kpi-s"></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-l">RF AUC</div></div><div class="kpi-v v" id="kRfAuc">—</div><div class="kpi-s"></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-l">XGBoost F1</div></div><div class="kpi-v i" id="kXgbF1">—</div><div class="kpi-s"></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-l">SVM F1</div></div><div class="kpi-v w" id="kSvmR2">—</div><div class="kpi-s"></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-l">SVM R²</div></div><div class="kpi-v w" id="kSvmR2">—</div><div class="kpi-s"></div></div>
       </div>
       <div class="panel">
         <div class="ph"><div class="pt">Random Forest</div><span class="badge bv"></span></div>
@@ -745,13 +745,16 @@ async function refreshResults(){
       if(k==='transformer')document.getElementById('kTstR2').textContent=r2.toFixed(3);}
     if(type==='fault'||k==='xgb'){const f1=d.f1||0,auc=d.auc||0,prec=d.precision||0;
       const mm=document.getElementById('mm-'+k);
-      if(mm&&type==='fault'){mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--violet)">${f1.toFixed(3)}</div><div class="mcm-l">F1</div></div><div class="mcm"><div class="mcm-v" style="color:var(--accent)">${auc.toFixed(3)}</div><div class="mcm-l">AUC</div></div><div class="mcm"><div class="mcm-v">${prec.toFixed(3)}</div><div class="mcm-l">Prec</div></div>`;const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,f1*100).toFixed(0)+'%';}}});
+      if(mm&&type==='fault'){if(k==='svm'){const r2=d.r2||0,rmse=d.rmse||0,mae=d.mae||0;mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--green)">${r2.toFixed(3)}</div><div class="mcm-l">R²</div></div><div class="mcm"><div class="mcm-v">${rmse.toFixed(4)}</div><div class="mcm-l">RMSE</div></div><div class="mcm"><div class="mcm-v">${mae.toFixed(4)}</div><div class="mcm-l">MAE</div></div>`;const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,r2*100).toFixed(0)+'%';}
+      else{mm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--violet)">${f1.toFixed(3)}</div><div class="mcm-l">F1</div></div><div class="mcm"><div class="mcm-v" style="color:var(--accent)">${auc.toFixed(3)}</div><div class="mcm-l">AUC</div></div><div class="mcm"><div class="mcm-v">${prec.toFixed(3)}</div><div class="mcm-l">Prec</div></div>`;const mb=document.getElementById('mb-'+k);if(mb)mb.style.width=Math.min(100,f1*100).toFixed(0)+'%';}}}});
   document.getElementById('kBestR2').textContent=bestR2>-99?bestR2.toFixed(3):'—';document.getElementById('kBestM').textContent=bestR2Name;
   const rulModels=['lstm','gru','transformer'].filter(k=>data[k]);if(rulModels.length){const best=rulModels.reduce((a,b)=>((data[a].rmse||99)<(data[b].rmse||99)?a:b));document.getElementById('kBestRmse').textContent=(data[best].rmse||0).toFixed(2);document.getElementById('kBestRmseM').textContent=data[best].name||best;}
   if(data.rf){const d=data.rf;document.getElementById('kRfF1').textContent=(d.f1||0).toFixed(3);document.getElementById('kRfAuc').textContent=(d.auc||0).toFixed(3);setProgBar('rf','f1',d.f1||0);setProgBar('rf','prec',d.precision||0);setProgBar('rf','rec',d.recall||0);setProgBar('rf','auc',d.auc||0);const cm=d.confusion_matrix||[[0,0],[0,0]];document.getElementById('cm-rf').innerHTML=`<div class="cm-c cm-tn">TN: ${cm[0][0]}<br><span style="font-size:9px;font-weight:400">True Neg</span></div><div class="cm-c cm-fp">FP: ${cm[0][1]}<br><span style="font-size:9px;font-weight:400">False Pos</span></div><div class="cm-c cm-fn">FN: ${cm[1][0]}<br><span style="font-size:9px;font-weight:400">False Neg</span></div><div class="cm-c cm-tp">TP: ${cm[1][1]}<br><span style="font-size:9px;font-weight:400">True Pos</span></div>`;}
   if(data.xgb){const d=data.xgb;document.getElementById('kXgbF1').textContent=(d.f1||0).toFixed(3);setProgBar('xgb','f1',d.f1||0);setProgBar('xgb','prec',d.precision||0);setProgBar('xgb','rec',d.recall||0);setProgBar('xgb','auc',d.auc||0);const vr2=d.val_r2||0,vrmse=d.val_rmse||0,vmae=d.val_mae||0;setProgBar('xgb','r2',vr2);setProgBar('xgb','rmse',Math.min(1,vrmse/50));setProgBar('xgb','mae',Math.min(1,vmae/30));document.getElementById('pv-xgb-r2').textContent=vr2.toFixed(3);document.getElementById('pv-xgb-rmse').textContent=vrmse.toFixed(2);document.getElementById('pv-xgb-mae').textContent=vmae.toFixed(2);const cm=d.confusion_matrix||[[0,0],[0,0]];document.getElementById('cm-xgb').innerHTML=`<div class="cm-c cm-tn">TN: ${cm[0][0]}<br><span style="font-size:9px;font-weight:400">True Neg</span></div><div class="cm-c cm-fp">FP: ${cm[0][1]}<br><span style="font-size:9px;font-weight:400">False Pos</span></div><div class="cm-c cm-fn">FN: ${cm[1][0]}<br><span style="font-size:9px;font-weight:400">False Neg</span></div><div class="cm-c cm-tp">TP: ${cm[1][1]}<br><span style="font-size:9px;font-weight:400">True Pos</span></div>`;}
   if(data.svm){const d=data.svm;
   document.getElementById('kSvmR2').textContent=(d.f1||0).toFixed(3);
+  const mm_svm=document.getElementById('mm-svm');
+  if(mm_svm){const f1=d.f1||0,auc=d.auc||0,prec=d.precision||0;mm_svm.innerHTML=`<div class="mcm"><div class="mcm-v" style="color:var(--violet)">${f1.toFixed(3)}</div><div class="mcm-l">F1</div></div><div class="mcm"><div class="mcm-v" style="color:var(--accent)">${auc.toFixed(3)}</div><div class="mcm-l">AUC</div></div><div class="mcm"><div class="mcm-v">${prec.toFixed(3)}</div><div class="mcm-l">Prec</div></div>`;const mb_svm=document.getElementById('mb-svm');if(mb_svm)mb_svm.style.width=Math.min(100,f1*100).toFixed(0)+'%';}
   setProgBar('svm','f1',d.f1||0);
   setProgBar('svm','prec',d.precision||0);
   setProgBar('svm','rec',d.recall||0);

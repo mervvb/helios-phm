@@ -986,153 +986,120 @@ function setGanttView(view,btn){
   if(ganttUnits.length)buildGantt(ganttUnits);
 }
 
-function rulToDate(rul){
-  // 1 RUL ≈ 1 flight cycle ≈ 1 day (simplified)
-  const d=new Date();
-  d.setDate(d.getDate()+Math.round(rul));
-  return d;
-}
 
 function buildGantt(units){
   ganttUnits=units;
   const el=document.getElementById('ganttChart');
   const SAFETY=5;
-
-  // RUL → tarih: bugün + RUL gün
-  const today=new Date();
-  today.setHours(0,0,0,0);
-  function rulToDate(rul){const d=new Date(today);d.setDate(d.getDate()+Math.round(rul));return d;}
-  function fmtDate(d){const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mo[d.getMonth()]+' '+d.getDate();}
-  function fmtDateFull(d){const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mo[d.getMonth()]+' '+d.getDate()+'\n'+d.getFullYear();}
-
-  // Görünüm penceresi
   const isWeek=ganttView==='week';
   const totalDays=isWeek?30:125;
 
-  // Sadece görünür motorları al (RUL <= totalDays veya high/medium risk)
-  const sorted=[...units]
-    .filter(u=>u.rul<=totalDays||(u.risk==='high'||u.risk==='medium'))
+  // Bugünün tarihi — her çalışmada güncel
+  const today=new Date();
+  today.setHours(0,0,0,0);
+
+  function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmt(d){return MO[d.getMonth()]+' '+d.getDate();}
+
+  // Sadece bu pencereye giren motorları al, RUL artan sırada
+  const visible=[...units]
+    .filter(u=>u.rul<=totalDays)
     .sort((a,b)=>a.rul-b.rul)
     .slice(0,30);
 
-  if(!sorted.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:32px">Bu pencerede bakım gerektiren motor yok</div>';return;}
-
-  const LABEL_W=90;
-  const ROW_H=28;
-  const HEADER_H=52;
-  const FOOTER_H=20;
-  const CHART_W=820;
-  const totalW=LABEL_W+CHART_W+16;
-  const totalH=HEADER_H+sorted.length*ROW_H+FOOTER_H+8;
-
-  // X ekseni: tarih ticks — haftalar
-  const startDate=new Date(today);
-  const endDate=rulToDate(totalDays);
-  const totalMs=endDate-startDate;
-
-  function dateToX(d){
-    const ms=d-startDate;
-    return LABEL_W+(ms/totalMs)*CHART_W;
+  if(!visible.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:32px">Bu pencerede bakım gerektiren motor yok</div>';
+    return;
   }
 
+  // Boyutlar
+  const LW=88;        // sol etiket genişliği
+  const CW=820;       // grafik alanı genişliği
+  const RH=26;        // satır yüksekliği
+  const HH=46;        // header yüksekliği
+  const FH=24;        // footer yüksekliği
+  const TW=LW+CW+8;
+  const TH=HH+visible.length*RH+FH;
+
+  const endDate=addDays(today,totalDays);
+  const totalMs=endDate-today;
+  function toX(d){return LW+(Math.max(0,d-today)/totalMs)*CW;}
+
+  // Tick günleri
+  const step=isWeek?7:Math.ceil(totalDays/5);
+  const ticks=[];
+  for(let d=0;d<=totalDays;d+=step) ticks.push(d);
+
   const C={
-    red:'#e53935',    redFill:'rgba(229,57,53,.82)',
-    amber:'#fb8c00',  amberFill:'rgba(251,140,0,.78)',
-    green:'#00897b',  greenFill:'rgba(0,137,123,.7)',
-    border:'#e4e8ee', bg:'#f8f9fb', panel:'#ffffff',
-    text:'#0f1923',   muted:'#9aacb8', gridLine:'rgba(208,215,222,0.55)',
-    title:'#7a909f',
+    redFill:'rgba(220,53,69,.82)',   redStroke:'#c0392b',
+    amberFill:'rgba(230,162,60,.82)',amberStroke:'#d4850a',
+    border:'#e0e6ed', bg:'#f7f9fb',  panel:'#ffffff',
+    text:'#2c3e50',   muted:'#95a5a6', grid:'rgba(189,195,199,.5)',
+    title:'#7f8c8d',
   };
+  function fill(r){return r==='high'?C.redFill:r==='medium'?C.amberFill:'rgba(46,204,113,.75)';}
+  function stroke(r){return r==='high'?C.redStroke:r==='medium'?C.amberStroke:'#27ae60';}
 
-  function riskFill(r){return r==='high'?C.redFill:r==='medium'?C.amberFill:C.greenFill;}
-  function riskStroke(r){return r==='high'?C.red:r==='medium'?C.amber:C.green;}
-
-  let svg=`<svg width="${totalW}" height="${totalH}" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">`;
-
-  // Arka plan
-  svg+=`<rect width="${totalW}" height="${totalH}" fill="${C.panel}"/>`;
+  let s=`<svg width="${TW}" height="${TH}" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">`;
+  s+=`<rect width="${TW}" height="${TH}" fill="${C.panel}"/>`;
 
   // Başlık
-  svg+=`<text x="${LABEL_W+CHART_W/2}" y="16" text-anchor="middle" fill="${C.title}" font-size="10" font-weight="700" letter-spacing="1.5">BAKIM GANTT ŞEMASI</text>`;
+  s+=`<text x="${LW+CW/2}" y="15" text-anchor="middle" fill="${C.title}" font-size="10" font-weight="700" letter-spacing="2">BAKIM GANTT ŞEMASI</text>`;
 
-  // Dikey kılavuz çizgileri + tarih başlıkları (haftalar)
-  const tickDays=isWeek?[0,7,14,21,28]:Math.ceil(totalDays/5);
-  const ticks=[];
-  if(isWeek){for(let d=0;d<=totalDays;d+=7)ticks.push(d);}
-  else{for(let d=0;d<=totalDays;d+=Math.ceil(totalDays/5))ticks.push(d);}
-
-  ticks.forEach(day=>{
-    const tickDate=new Date(today);tickDate.setDate(tickDate.getDate()+day);
-    const x=dateToX(tickDate);
-    // Grid çizgisi
-    svg+=`<line x1="${x}" y1="${HEADER_H-4}" x2="${x}" y2="${totalH-FOOTER_H}" stroke="${C.gridLine}" stroke-width="1"/>`;
-    // Tarih etiketi
-    const label=fmtDate(tickDate);
-    const parts=label.split(' ');
-    svg+=`<text x="${x}" y="${HEADER_H-18}" text-anchor="middle" fill="${C.muted}" font-size="10" font-weight="600">${parts[0]} ${parts[1]}</text>`;
-    if(day===0){
-      svg+=`<text x="${x}" y="${HEADER_H-6}" text-anchor="middle" fill="${C.muted}" font-size="9">${today.getFullYear()}</text>`;
-    }
+  // Dikey grid + tarih ticks
+  ticks.forEach(d=>{
+    const td=addDays(today,d);
+    const x=toX(td);
+    s+=`<line x1="${x}" y1="${HH-2}" x2="${x}" y2="${HH+visible.length*RH}" stroke="${C.grid}" stroke-width="1"/>`;
+    s+=`<text x="${x}" y="${HH-16}" text-anchor="middle" fill="${C.muted}" font-size="10" font-weight="600">${fmt(td)}</text>`;
+    if(d===0) s+=`<text x="${x}" y="${HH-4}" text-anchor="middle" fill="${C.muted}" font-size="9">${td.getFullYear()}</text>`;
   });
 
-  // Header ayırıcı
-  svg+=`<line x1="${LABEL_W}" y1="${HEADER_H}" x2="${totalW}" y2="${HEADER_H}" stroke="${C.border}" stroke-width="1.5"/>`;
+  // Header çizgisi
+  s+=`<line x1="${LW}" y1="${HH}" x2="${TW}" y2="${HH}" stroke="${C.border}" stroke-width="1.5"/>`;
 
-  // Sol eksen başlığı
-  svg+=`<text x="${LABEL_W/2}" y="${HEADER_H+sorted.length*ROW_H/2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600" transform="rotate(-90,${LABEL_W/2-8},${HEADER_H+sorted.length*ROW_H/2})">Motor / Unit</text>`;
+  // Sol eksen başlığı (dikey)
+  s+=`<text x="12" y="${HH+visible.length*RH/2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600" transform="rotate(-90,12,${HH+visible.length*RH/2})">Motor / Unit</text>`;
 
   // Satırlar
-  sorted.forEach((u,ri)=>{
-    const y=HEADER_H+ri*ROW_H;
-    const fill=riskFill(u.risk);
-    const stroke=riskStroke(u.risk);
-
-    // Zebra
-    if(ri%2===1) svg+=`<rect x="${LABEL_W}" y="${y}" width="${CHART_W}" height="${ROW_H}" fill="${C.bg}" opacity=".6"/>`;
+  visible.forEach((u,i)=>{
+    const y=HH+i*RH;
+    if(i%2===0) s+=`<rect x="${LW}" y="${y}" width="${CW}" height="${RH}" fill="${C.bg}" opacity=".5"/>`;
+    s+=`<line x1="0" y1="${y+RH}" x2="${TW}" y2="${y+RH}" stroke="${C.border}" stroke-width=".3"/>`;
 
     // Motor etiketi
-    svg+=`<text x="${LABEL_W-6}" y="${y+ROW_H/2+4}" text-anchor="end" fill="${C.text}" font-size="11" font-weight="600">Unit ${u.unit}</text>`;
+    s+=`<text x="${LW-6}" y="${y+RH/2+4}" text-anchor="end" fill="${C.text}" font-size="11" font-weight="600">Unit ${u.unit}</text>`;
 
-    // Bakım başlangıcı = bugün (x=LABEL_W), bitiş = safeRul günü
-    const safeRul=Math.max(1,u.rul-SAFETY);
-    const barStart=new Date(today);
-    const barEnd=new Date(today);barEnd.setDate(barEnd.getDate()+Math.round(safeRul));
+    // Bar: today → safeRul günü
+    const safeRul=Math.max(1, u.rul-SAFETY);
+    const x0=toX(today);
+    const x1=Math.min(toX(addDays(today,Math.round(safeRul))), LW+CW-1);
+    const bw=Math.max(4,x1-x0);
+    const bh=14; const by=y+(RH-bh)/2;
 
-    const x0=dateToX(barStart);
-    const x1=Math.min(dateToX(barEnd), LABEL_W+CHART_W-2);
-    const barW=Math.max(4,x1-x0);
-    const barH=14;
-    const barY=y+(ROW_H-barH)/2;
-
-    // Bar gölgesi
-    svg+=`<rect x="${x0+1}" y="${barY+1}" width="${barW}" height="${barH}" rx="3" fill="rgba(0,0,0,.08)"/>`;
+    // Gölge
+    s+=`<rect x="${x0+1}" y="${by+1}" width="${bw}" height="${bh}" rx="3" fill="rgba(0,0,0,.1)"/>`;
     // Bar
-    svg+=`<rect x="${x0}" y="${barY}" width="${barW}" height="${barH}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width=".5"/>`;
-
-    // Bar içi RUL değeri
-    if(barW>36){
-      svg+=`<text x="${x0+barW-5}" y="${barY+barH/2+4}" text-anchor="end" fill="white" font-size="9" font-weight="700">${Math.round(safeRul)}d</text>`;
-    }
-
-    // Satır ayırıcı
-    svg+=`<line x1="0" y1="${y+ROW_H}" x2="${totalW}" y2="${y+ROW_H}" stroke="${C.border}" stroke-width=".4"/>`;
+    s+=`<rect x="${x0}" y="${by}" width="${bw}" height="${bh}" rx="3" fill="${fill(u.risk)}" stroke="${stroke(u.risk)}" stroke-width=".5"/>`;
+    // Etiket
+    if(bw>40) s+=`<text x="${x0+bw-5}" y="${by+bh/2+4}" text-anchor="end" fill="white" font-size="9" font-weight="700">${fmt(addDays(today,Math.round(safeRul)))}</text>`;
   });
 
-  // X ekseni alt çizgi
-  svg+=`<line x1="${LABEL_W}" y1="${HEADER_H+sorted.length*ROW_H}" x2="${totalW}" y2="${HEADER_H+sorted.length*ROW_H}" stroke="${C.border}" stroke-width="1.5"/>`;
+  // Alt çizgi
+  s+=`<line x1="${LW}" y1="${HH+visible.length*RH}" x2="${TW}" y2="${HH+visible.length*RH}" stroke="${C.border}" stroke-width="1.5"/>`;
 
-  // Alt eksen tarihleri (tekrar — görsel referans)
-  ticks.forEach(day=>{
-    const tickDate=new Date(today);tickDate.setDate(tickDate.getDate()+day);
-    const x=dateToX(tickDate);
-    svg+=`<text x="${x}" y="${totalH-FOOTER_H+14}" text-anchor="middle" fill="${C.muted}" font-size="9">${fmtDate(tickDate)}</text>`;
+  // Alt tarih ticks
+  ticks.forEach(d=>{
+    const x=toX(addDays(today,d));
+    s+=`<text x="${x}" y="${HH+visible.length*RH+14}" text-anchor="middle" fill="${C.muted}" font-size="9">${fmt(addDays(today,d))}</text>`;
   });
 
-  // X eksen başlığı
-  svg+=`<text x="${LABEL_W+CHART_W/2}" y="${totalH-2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600">Tarih</text>`;
+  // Alt eksen başlığı
+  s+=`<text x="${LW+CW/2}" y="${TH-2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600">Tarih</text>`;
 
-  svg+='</svg>';
-  el.innerHTML=svg;
+  s+='</svg>';
+  el.innerHTML=s;
 }
 
 function buildMaintList(units){

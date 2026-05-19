@@ -19,6 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 
+sys.path.insert(0, BASE_DIR)  # demo_data.py aynı klasörde
 sys.path.insert(0, os.path.join(ROOT_DIR, "rul_models"))
 sys.path.insert(0, os.path.join(ROOT_DIR, "fault_models"))
 
@@ -39,6 +40,25 @@ CORS(app)
 RESULTS  = {}
 TRAINING = {}
 LOGS     = {}
+
+# ── DEMO MODU ─────────────────────────────────────────────────────────────
+# Gerçek veri yoksa (Render ücretsiz plan, cold start vb.) demo sonuçlar yükle
+def _try_load_demo():
+    try:
+        import demo_data
+        demo = demo_data.load_demo_results()
+        RESULTS.update(demo)
+        print("  ✓  Demo modu aktif — önceden hesaplanmış sonuçlar yüklendi")
+    except Exception as e:
+        print(f"  ⚠  Demo yüklenemedi: {e}")
+
+_data_ready = all(
+    os.path.exists(os.path.join(DATA_DIR, f))
+    for f in ["train_FD001.txt", "test_FD001.txt", "RUL_FD001.txt"]
+)
+if not _data_ready:
+    _try_load_demo()
+# ──────────────────────────────────────────────────────────────────────────
 
 ALLOWED_EXT = {".txt", ".csv", ".xlsx", ".xls", ".json"}
 SAFETY_MARGIN = 5   # cycle — Dynamic Maintenance Window için
@@ -346,8 +366,10 @@ def serve_frontend():
 
 @app.route("/api/status")
 def api_status():
+    data_ready = os.path.exists(os.path.join(DATA_DIR, "train_FD001.txt"))
     return jsonify({
-        "data_ready":       os.path.exists(os.path.join(DATA_DIR, "train_FD001.txt")),
+        "data_ready":       data_ready,
+        "demo_mode":        not data_ready and bool(RESULTS),
         "models_trained":   list(RESULTS.keys()),
         "models_training":  list(TRAINING.keys()),
         "available_models": list(MODEL_MAP.keys()),

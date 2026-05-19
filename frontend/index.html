@@ -996,133 +996,140 @@ function rulToDate(rul){
 function buildGantt(units){
   ganttUnits=units;
   const el=document.getElementById('ganttChart');
-  const sorted=[...units].sort((a,b)=>(b.priority_score||0)-(a.priority_score||0)).slice(0,16);
+  const SAFETY=5;
 
-  // X ekseni: cycle cinsinden pencere
-  // Haftalık mod → 0–30 cycle, Aylık mod → 0–125 cycle
+  // RUL → tarih: bugün + RUL gün
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  function rulToDate(rul){const d=new Date(today);d.setDate(d.getDate()+Math.round(rul));return d;}
+  function fmtDate(d){const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mo[d.getMonth()]+' '+d.getDate();}
+  function fmtDateFull(d){const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mo[d.getMonth()]+' '+d.getDate()+'\n'+d.getFullYear();}
+
+  // Görünüm penceresi
   const isWeek=ganttView==='week';
-  const totalCycles=isWeek?30:125;
-  const tickCount=isWeek?6:5;
-  const tickSize=totalCycles/tickCount;
-  const SAFETY=5;  // güvenlik marjı (cycle)
+  const totalDays=isWeek?30:125;
 
-  const LABEL_W=80;
-  const TEAM_W=38;
-  const COL_W=isWeek?72:66;
-  const ROW_H=38;
-  const HEADER_H=36;
-  const CHART_W=tickCount*COL_W;
-  const totalW=LABEL_W+CHART_W+TEAM_W+8;
-  const totalH=HEADER_H+sorted.length*ROW_H+24;
+  // Sadece görünür motorları al (RUL <= totalDays veya high/medium risk)
+  const sorted=[...units]
+    .filter(u=>u.rul<=totalDays||(u.risk==='high'||u.risk==='medium'))
+    .sort((a,b)=>a.rul-b.rul)
+    .slice(0,30);
+
+  if(!sorted.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:32px">Bu pencerede bakım gerektiren motor yok</div>';return;}
+
+  const LABEL_W=90;
+  const ROW_H=28;
+  const HEADER_H=52;
+  const FOOTER_H=20;
+  const CHART_W=820;
+  const totalW=LABEL_W+CHART_W+16;
+  const totalH=HEADER_H+sorted.length*ROW_H+FOOTER_H+8;
+
+  // X ekseni: tarih ticks — haftalar
+  const startDate=new Date(today);
+  const endDate=rulToDate(totalDays);
+  const totalMs=endDate-startDate;
+
+  function dateToX(d){
+    const ms=d-startDate;
+    return LABEL_W+(ms/totalMs)*CHART_W;
+  }
 
   const C={
-    red:'#ef5350', amber:'#ffa726', green:'#26a69a',
-    redFill:'rgba(239,83,80,.8)', amberFill:'rgba(255,167,38,.75)', greenFill:'rgba(38,166,154,.75)',
-    window:'rgba(0,151,167,.1)',
-    border:'#e4e8ee', bg:'#f6f8fa', panel:'#ffffff',
-    text:'#0f1923', muted:'#7a909f',
-    teamA:'#0097a7', teamB:'#6a1b9a',
+    red:'#e53935',    redFill:'rgba(229,57,53,.82)',
+    amber:'#fb8c00',  amberFill:'rgba(251,140,0,.78)',
+    green:'#00897b',  greenFill:'rgba(0,137,123,.7)',
+    border:'#e4e8ee', bg:'#f8f9fb', panel:'#ffffff',
+    text:'#0f1923',   muted:'#9aacb8', gridLine:'rgba(208,215,222,0.55)',
+    title:'#7a909f',
   };
 
-  function riskColor(r){return r==='high'?C.red:r==='medium'?C.amber:C.green;}
   function riskFill(r){return r==='high'?C.redFill:r==='medium'?C.amberFill:C.greenFill;}
+  function riskStroke(r){return r==='high'?C.red:r==='medium'?C.amber:C.green;}
 
   let svg=`<svg width="${totalW}" height="${totalH}" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">`;
+
+  // Arka plan
   svg+=`<rect width="${totalW}" height="${totalH}" fill="${C.panel}"/>`;
 
-  // Zebra
-  for(let i=0;i<tickCount;i++){
-    const x=LABEL_W+i*COL_W;
-    if(i%2===1) svg+=`<rect x="${x}" y="${HEADER_H}" width="${COL_W}" height="${totalH-HEADER_H}" fill="${C.bg}" opacity=".55"/>`;
-  }
+  // Başlık
+  svg+=`<text x="${LABEL_W+CHART_W/2}" y="16" text-anchor="middle" fill="${C.title}" font-size="10" font-weight="700" letter-spacing="1.5">BAKIM GANTT ŞEMASI</text>`;
 
-  // Header
-  svg+=`<rect x="0" y="0" width="${totalW}" height="${HEADER_H}" fill="${C.bg}"/>`;
-  svg+=`<line x1="0" y1="${HEADER_H}" x2="${totalW}" y2="${HEADER_H}" stroke="${C.border}" stroke-width="1.5"/>`;
-  svg+=`<line x1="${LABEL_W}" y1="0" x2="${LABEL_W}" y2="${totalH}" stroke="${C.border}" stroke-width="1"/>`;
+  // Dikey kılavuz çizgileri + tarih başlıkları (haftalar)
+  const tickDays=isWeek?[0,7,14,21,28]:Math.ceil(totalDays/5);
+  const ticks=[];
+  if(isWeek){for(let d=0;d<=totalDays;d+=7)ticks.push(d);}
+  else{for(let d=0;d<=totalDays;d+=Math.ceil(totalDays/5))ticks.push(d);}
 
-  // Motor başlığı
-  svg+=`<text x="${LABEL_W/2}" y="${HEADER_H/2+5}" text-anchor="middle" fill="${C.muted}" font-size="11" font-weight="600">Motor</text>`;
+  ticks.forEach(day=>{
+    const tickDate=new Date(today);tickDate.setDate(tickDate.getDate()+day);
+    const x=dateToX(tickDate);
+    // Grid çizgisi
+    svg+=`<line x1="${x}" y1="${HEADER_H-4}" x2="${x}" y2="${totalH-FOOTER_H}" stroke="${C.gridLine}" stroke-width="1"/>`;
+    // Tarih etiketi
+    const label=fmtDate(tickDate);
+    const parts=label.split(' ');
+    svg+=`<text x="${x}" y="${HEADER_H-18}" text-anchor="middle" fill="${C.muted}" font-size="10" font-weight="600">${parts[0]} ${parts[1]}</text>`;
+    if(day===0){
+      svg+=`<text x="${x}" y="${HEADER_H-6}" text-anchor="middle" fill="${C.muted}" font-size="9">${today.getFullYear()}</text>`;
+    }
+  });
 
-  // Cycle tick başlıkları
-  for(let i=0;i<=tickCount;i++){
-    const x=LABEL_W+i*COL_W;
-    const cycleVal=Math.round(i*tickSize);
-    svg+=`<text x="${x}" y="${HEADER_H/2+5}" text-anchor="middle" fill="${C.muted}" font-size="10">${cycleVal}c</text>`;
-    svg+=`<line x1="${x}" y1="${HEADER_H}" x2="${x}" y2="${totalH-24}" stroke="${C.border}" stroke-width=".5"/>`;
-  }
+  // Header ayırıcı
+  svg+=`<line x1="${LABEL_W}" y1="${HEADER_H}" x2="${totalW}" y2="${HEADER_H}" stroke="${C.border}" stroke-width="1.5"/>`;
+
+  // Sol eksen başlığı
+  svg+=`<text x="${LABEL_W/2}" y="${HEADER_H+sorted.length*ROW_H/2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600" transform="rotate(-90,${LABEL_W/2-8},${HEADER_H+sorted.length*ROW_H/2})">Motor / Unit</text>`;
 
   // Satırlar
   sorted.forEach((u,ri)=>{
     const y=HEADER_H+ri*ROW_H;
-    const rCol=riskColor(u.risk);
-    const rFill=riskFill(u.risk);
-    const team=ri%2===0?'A':'B';
-    const teamCol=ri%2===0?C.teamA:C.teamB;
+    const fill=riskFill(u.risk);
+    const stroke=riskStroke(u.risk);
 
-    svg+=`<line x1="0" y1="${y+ROW_H}" x2="${totalW}" y2="${y+ROW_H}" stroke="${C.border}" stroke-width=".5"/>`;
+    // Zebra
+    if(ri%2===1) svg+=`<rect x="${LABEL_W}" y="${y}" width="${CHART_W}" height="${ROW_H}" fill="${C.bg}" opacity=".6"/>`;
 
-    // Risk şeridi (sol)
-    svg+=`<rect x="2" y="${y+9}" width="4" height="${ROW_H-18}" rx="2" fill="${rCol}"/>`;
+    // Motor etiketi
+    svg+=`<text x="${LABEL_W-6}" y="${y+ROW_H/2+4}" text-anchor="end" fill="${C.text}" font-size="11" font-weight="600">Unit ${u.unit}</text>`;
 
-    // Motor no + priority score
-    svg+=`<text x="${LABEL_W-10}" y="${y+ROW_H/2+1}" text-anchor="end" fill="${C.text}" font-size="12" font-weight="700">#${u.unit}</text>`;
-    svg+=`<text x="${LABEL_W-10}" y="${y+ROW_H/2+13}" text-anchor="end" fill="${C.muted}" font-size="9">${(u.priority_score||0).toFixed(0)}p</text>`;
+    // Bakım başlangıcı = bugün (x=LABEL_W), bitiş = safeRul günü
+    const safeRul=Math.max(1,u.rul-SAFETY);
+    const barStart=new Date(today);
+    const barEnd=new Date(today);barEnd.setDate(barEnd.getDate()+Math.round(safeRul));
 
-    const barX=LABEL_W;
-
-    // Cycle değerlerini piksel pozisyona çevir
-    const rul=u.rul||0;
-    const safeRul=Math.max(0, rul-SAFETY);  // güvenli bakım noktası
-
-    // Görünür pencereye sığdır (clamp)
-    const windowPx=(Math.min(safeRul, totalCycles)/totalCycles)*CHART_W;
-    const failPx=(Math.min(rul, totalCycles)/totalCycles)*CHART_W;
-
-    // 1) Maintenance window arka planı (0 → safeRul)
-    if(windowPx>0){
-      svg+=`<rect x="${barX}" y="${y+8}" width="${windowPx}" height="${ROW_H-16}" rx="4" fill="${C.window}"/>`;
-    }
-
-    // 2) Planned slot bar
-    const barH=16;
+    const x0=dateToX(barStart);
+    const x1=Math.min(dateToX(barEnd), LABEL_W+CHART_W-2);
+    const barW=Math.max(4,x1-x0);
+    const barH=14;
     const barY=y+(ROW_H-barH)/2;
-    const barW=Math.max(3, windowPx);
-    svg+=`<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="4" fill="${rFill}"/>`;
 
-    // Bar içi: cycle sayısı (yeterli genişlikte)
-    if(barW>32){
-      svg+=`<text x="${barX+barW-5}" y="${barY+barH/2+4}" text-anchor="end" fill="white" font-size="9" font-weight="700">${Math.round(safeRul)}c</text>`;
+    // Bar gölgesi
+    svg+=`<rect x="${x0+1}" y="${barY+1}" width="${barW}" height="${barH}" rx="3" fill="rgba(0,0,0,.08)"/>`;
+    // Bar
+    svg+=`<rect x="${x0}" y="${barY}" width="${barW}" height="${barH}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width=".5"/>`;
+
+    // Bar içi RUL değeri
+    if(barW>36){
+      svg+=`<text x="${x0+barW-5}" y="${barY+barH/2+4}" text-anchor="end" fill="white" font-size="9" font-weight="700">${Math.round(safeRul)}d</text>`;
     }
 
-    // 3) Failure point (RUL = failPx) — çizgi + ok
-    const fpX=barX+failPx;
-    if(failPx>windowPx+6 && fpX<LABEL_W+CHART_W-2){
-      svg+=`<line x1="${fpX}" y1="${y+6}" x2="${fpX}" y2="${y+ROW_H-6}" stroke="${rCol}" stroke-width="1.5" stroke-dasharray="3,2" opacity=".85"/>`;
-      svg+=`<polygon points="${fpX},${y+5} ${fpX-4},${y+12} ${fpX+4},${y+12}" fill="${rCol}"/>`;
-    }
-
-    // 4) Team badge — sağ sabit sütun, daire
-    const bCX=LABEL_W+CHART_W+TEAM_W/2;
-    const bCY=y+ROW_H/2;
-    svg+=`<circle cx="${bCX}" cy="${bCY}" r="13" fill="${teamCol}" opacity=".12"/>`;
-    svg+=`<circle cx="${bCX}" cy="${bCY}" r="13" fill="none" stroke="${teamCol}" stroke-width="1" opacity=".4"/>`;
-    svg+=`<text x="${bCX}" y="${bCY+4}" text-anchor="middle" fill="${teamCol}" font-size="10" font-weight="700">T${team}</text>`;
+    // Satır ayırıcı
+    svg+=`<line x1="0" y1="${y+ROW_H}" x2="${totalW}" y2="${y+ROW_H}" stroke="${C.border}" stroke-width=".4"/>`;
   });
 
-  // Legend
-  const LY=totalH-12;
-  let lx=LABEL_W;
-  svg+=`<rect x="${lx}" y="${LY-4}" width="12" height="8" rx="2" fill="${C.window}" stroke="rgba(0,151,167,.3)" stroke-width="1"/>`;
-  svg+=`<text x="${lx+16}" y="${LY+3}" fill="${C.muted}" font-size="9">Maintenance Window (cycle)</text>`;lx+=150;
-  svg+=`<rect x="${lx}" y="${LY-4}" width="12" height="8" rx="2" fill="rgba(239,83,80,.8)"/>`;
-  svg+=`<text x="${lx+16}" y="${LY+3}" fill="${C.muted}" font-size="9">Planned Slot</text>`;lx+=100;
-  svg+=`<line x1="${lx+6}" y1="${LY-5}" x2="${lx+6}" y2="${LY+5}" stroke="#ef5350" stroke-width="1.5" stroke-dasharray="2,1"/>`;
-  svg+=`<polygon points="${lx+6},${LY-7} ${lx+2},${LY-2} ${lx+10},${LY-2}" fill="#ef5350"/>`;
-  svg+=`<text x="${lx+14}" y="${LY+3}" fill="${C.muted}" font-size="9">Predicted Failure (RUL=0)</text>`;
+  // X ekseni alt çizgi
+  svg+=`<line x1="${LABEL_W}" y1="${HEADER_H+sorted.length*ROW_H}" x2="${totalW}" y2="${HEADER_H+sorted.length*ROW_H}" stroke="${C.border}" stroke-width="1.5"/>`;
 
-  // X ekseni etiketi
-  svg+=`<text x="${LABEL_W+CHART_W/2}" y="${totalH-1}" text-anchor="middle" fill="${C.muted}" font-size="9" font-style="italic"></text>`;
+  // Alt eksen tarihleri (tekrar — görsel referans)
+  ticks.forEach(day=>{
+    const tickDate=new Date(today);tickDate.setDate(tickDate.getDate()+day);
+    const x=dateToX(tickDate);
+    svg+=`<text x="${x}" y="${totalH-FOOTER_H+14}" text-anchor="middle" fill="${C.muted}" font-size="9">${fmtDate(tickDate)}</text>`;
+  });
+
+  // X eksen başlığı
+  svg+=`<text x="${LABEL_W+CHART_W/2}" y="${totalH-2}" text-anchor="middle" fill="${C.muted}" font-size="9" font-weight="600">Tarih</text>`;
 
   svg+='</svg>';
   el.innerHTML=svg;

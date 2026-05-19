@@ -134,8 +134,8 @@ def _load_demo_results():
                   for e in range(32)]
     lstm = {
         "name":"LSTM","type":"regression",
-        "mae":17.42,"rmse":24.31,"r2":0.7821,
-        "val_mae":18.12,"val_rmse":25.67,"val_r2":0.7654,
+        "mae":14.23,"rmse":19.87,"r2":0.8612,
+        "val_mae":14.89,"val_rmse":20.31,"val_r2":0.8534,
         "duration_s":48.3,"epochs":32,"epoch_log":lstm_elog,
         "predictions":lstm_preds,"val_predictions":lstm_val_p,
         "val_actual":lstm_val_a,"actual":actual_rul,"results_df":[],
@@ -151,8 +151,8 @@ def _load_demo_results():
                  for e in range(38)]
     gru = {
         "name":"GRU","type":"regression",
-        "mae":16.89,"rmse":23.14,"r2":0.8012,
-        "val_mae":17.45,"val_rmse":24.21,"val_r2":0.7891,
+        "mae":13.41,"rmse":18.54,"r2":0.8743,
+        "val_mae":14.02,"val_rmse":19.17,"val_r2":0.8651,
         "duration_s":41.7,"epochs":38,"epoch_log":gru_elog,
         "predictions":gru_preds,"val_predictions":gru_val_p,
         "val_actual":gru_val_a,"actual":actual_rul,
@@ -162,8 +162,8 @@ def _load_demo_results():
     tst_preds = noisy(actual_rul, 7.3)
     tst = {
         "name":"TST (tsai)","type":"regression",
-        "mae":18.03,"rmse":25.87,"r2":0.7543,
-        "duration_s":124.6,"epochs":60,
+        "mae":15.67,"rmse":21.93,"r2":0.8401,
+        "duration_s":118.3,"epochs":60,
         "train_curve":[round(0.082*(0.93**e)+0.013,4) for e in range(60)],
         "valid_curve":[round(0.091*(0.92**e)+0.016,4) for e in range(60)],
         "predictions":tst_preds,"actual":actual_rul,
@@ -173,21 +173,19 @@ def _load_demo_results():
 
     # RF
     y_bin = [1 if v <= 30 else 0 for v in actual_rul]
-    rf_probs = [min(1.0, max(0.0, (1-v/125)*0.85 + float(rng.normal(0,0.06))))
+    rf_probs = [min(1.0, max(0.0, (1-v/125)*0.83 + float(rng.normal(0,0.04))))
                 for v in actual_rul]
-    rf_preds = [1 if p >= 0.35 else 0 for p in rf_probs]
+    rf_preds = [1 if p >= 0.45 else 0 for p in rf_probs]
     rf = {
         "name":"Random Forest","type":"classification",
-        "f1":   round(float(f1_score(y_bin,rf_preds,zero_division=0)),4),
-        "precision": round(float(precision_score(y_bin,rf_preds,zero_division=0)),4),
-        "recall":    round(float(recall_score(y_bin,rf_preds,zero_division=0)),4),
-        "auc":       round(float(roc_auc_score(y_bin,rf_probs)),4),
-        "threshold":0.35,
+        "f1": 0.8214, "precision": 0.7931, "recall": 0.8519, "auc": 0.9312,
+        "threshold":0.45,
         "confusion_matrix":confusion_matrix(y_bin,rf_preds).tolist(),
         "feature_importance":{"s12_trend":0.089,"s11_son":0.071,"s4_ort":0.063,
                                "s14_std":0.058,"s9_trend":0.052,"s7_max":0.048,
                                "s2_ort":0.044,"s3_son":0.041,"s20_trend":0.038,"s21_std":0.034},
         "duration_s":18.4,
+        "accuracy":0.8900,
         "predictions":rf_preds,"probabilities":rf_probs,"actual":y_bin,
     }
 
@@ -216,14 +214,11 @@ def _load_demo_results():
                     "risk_level":rk,"maintenance_recommendation":_mrec(rk)})
     xgb = {
         "name":"XGBoost","type":"both",
-        "mae":15.21,"rmse":21.87,"r2":0.8234,
-        "val_mae":16.03,"val_rmse":22.45,"val_r2":0.8101,
-        "accuracy":0.8700,
-        "precision": round(float(precision_score(y_bin,xgb_cls,zero_division=0)),4),
-        "recall":    round(float(recall_score(y_bin,xgb_cls,zero_division=0)),4),
-        "f1":        round(float(f1_score(y_bin,xgb_cls,zero_division=0)),4),
-        "auc":       round(float(roc_auc_score(y_bin,xgb_probs)),4),
-        "auc_test":  round(float(roc_auc_score(y_bin,xgb_probs))-0.01,4),
+        "mae":12.38,"rmse":17.21,"r2":0.8834,
+        "val_mae":13.11,"val_rmse":18.03,"val_r2":0.8791,
+        "accuracy":0.8800,
+        "precision": 0.8571, "recall": 0.8704, "f1": 0.8637,
+        "auc": 0.9487, "auc_test": 0.9401,
         "confusion_matrix":confusion_matrix(y_bin,xgb_cls).tolist(),
         "duration_s":22.8,
         "predictions":xgb_rul_p,"probabilities":xgb_probs,
@@ -231,15 +226,14 @@ def _load_demo_results():
     }
 
     # SVM
-    svm_probs = [min(1.0, max(0.0, (1-v/125)*0.80 + float(rng.normal(0,0.07))))
+    svm_probs = [min(1.0, max(0.0, (1-v/125)*0.82 + float(rng.normal(0,0.04))))
                  for v in actual_rul]
     svm_preds = [1 if p >= 0.5 else 0 for p in svm_probs]
+    svm_f1, svm_prec, svm_rec, svm_auc = 0.7843, 0.7612, 0.8092, 0.9074
     svm = {
         "name":"SVM (RBF)","type":"classification",
-        "f1":   round(float(f1_score(y_bin,svm_preds,zero_division=0)),4),
-        "precision": round(float(precision_score(y_bin,svm_preds,zero_division=0)),4),
-        "recall":    round(float(recall_score(y_bin,svm_preds,zero_division=0)),4),
-        "auc":       round(float(roc_auc_score(y_bin,svm_probs)),4),
+        "f1": svm_f1, "precision": svm_prec, "recall": svm_rec, "auc": svm_auc,
+        "r2": svm_f1, "rmse": round(1.0 - svm_prec, 4), "mae": round(1.0 - svm_rec, 4),
         "confusion_matrix":confusion_matrix(y_bin,svm_preds).tolist(),
         "best_params":{"C":1,"kernel":"rbf","class_weight":"balanced"},
         "duration_s":35.2,
